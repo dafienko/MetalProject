@@ -6,14 +6,20 @@
 //
 
 import UIKit
+import MetalKit
 
 class ViewController: UIViewController {
-
+    @IBOutlet weak var metalView: MTKView!
+    
+    var renderer: Renderer?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        
+        metalView.device = MTLCreateSystemDefaultDevice()
+        metalView.clearColor = MTLClearColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)
+        
+        renderer = Renderer(device: metalView.device!)
+        metalView.delegate = renderer
     }
-
-
 }
-
