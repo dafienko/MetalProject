@@ -18,6 +18,7 @@ class ViewController: UIViewController {
         
         metalView.device = MTLCreateSystemDefaultDevice()
         metalView.clearColor = MTLClearColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
+        metalView.depthStencilPixelFormat = .depth32Float
         
         renderer = Renderer(device: metalView.device!)
         metalView.delegate = renderer
