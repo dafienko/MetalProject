@@ -9,7 +9,7 @@
 using namespace metal;
 
 struct Uniforms {
-    float offset;
+    float4x4 mvpMatrix;
 };
 
 struct VertexIn {
@@ -24,10 +24,8 @@ struct VertexOut {
 
 vertex VertexOut vertex_shader(const VertexIn vertexIn [[ stage_in ]], constant Uniforms &uniforms [[ buffer(1) ]]) {
     VertexOut vertexOut;
-    vertexOut.position = vertexIn.position;
+    vertexOut.position = uniforms.mvpMatrix * vertexIn.position;
     vertexOut.color = vertexIn.color;
-    
-    vertexOut.position.x += uniforms.offset;
     
     return vertexOut;
 }

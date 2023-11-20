@@ -6,10 +6,17 @@
 //
 
 import MetalKit
+import Spatial
 
+// vertex information sent to vertex shader stage_in
 struct Vertex {
     var position: SIMD3<Float>;
     var color: SIMD4<Float>;
+}
+
+// struct to send to shaders
+struct Uniforms {
+    var mvpMatrix: float4x4 = float4x4(1.0);
 }
 
 class Renderer: NSObject {
@@ -20,10 +27,6 @@ class Renderer: NSObject {
     var indexBuffer: MTLBuffer?
     
     var time: Float = 0.0;
-    
-    struct Uniforms {
-        var offset: Float = 0.0;
-    }
     
     var uniforms = Uniforms()
     
@@ -37,7 +40,7 @@ class Renderer: NSObject {
     }
     
     private func generateBuffer() {
-        let x: Float = 0.8
+        let x: Float = 1.0
         let vertices: [Vertex] = [
             Vertex(position: SIMD3<Float>(x, x, 0.0), color: SIMD4<Float>(1.0, 0.0, 1.0, 1.0)), // top right
             Vertex(position: SIMD3<Float>(-x, x, 0.0), color: SIMD4<Float>(0.0, 0.0, 1.0, 1.0)), // top left
@@ -76,9 +79,11 @@ class Renderer: NSObject {
         vertexDescriptor.attributes[0].format = .float3
         vertexDescriptor.attributes[0].offset = 0
         vertexDescriptor.attributes[0].bufferIndex = 0
+        
         vertexDescriptor.attributes[1].format = .float4
         vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
         vertexDescriptor.attributes[1].bufferIndex = 0
+        
         vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
         
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
@@ -103,7 +108,20 @@ extension Renderer: MTKViewDelegate {
             let pipelineState = pipelineState
         else { return }
         
-        uniforms.offset = abs(sin(time));
+        var modelMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: 0.0, z: -10.0)))
+        modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, time, 0), order: .xyz))))
+        
+        let viewMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.2, y: 0.0, z: 0.0)))
+       
+        let projMat = simd_float4x4(ProjectiveTransform3D(
+            fovyRadians: 45.0 * (Double.pi / 180.0),
+            aspectRatio: view.drawableSize.width / view.drawableSize.height,
+            nearZ: 0.1,
+            farZ: 100.0)
+        )
+       
+        let mvMat = projMat * viewMat.inverse * modelMat
+        uniforms.mvpMatrix = mvMat
         
         let commandBuffer = commandQueue.makeCommandBuffer()!
         let commandEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor);
