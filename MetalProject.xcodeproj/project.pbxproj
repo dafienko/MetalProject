@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BB4144812B0BE91A005FE07D /* Cube.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4144802B0BE91A005FE07D /* Cube.swift */; };
 		BB6D362F2B09723300E8196C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6D362E2B09723300E8196C /* AppDelegate.swift */; };
 		BB6D36312B09723300E8196C /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6D36302B09723300E8196C /* SceneDelegate.swift */; };
 		BB6D36332B09723300E8196C /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6D36322B09723300E8196C /* ViewController.swift */; };
@@ -18,6 +19,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		BB4144802B0BE91A005FE07D /* Cube.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cube.swift; sourceTree = "<group>"; };
 		BB6D362B2B09723300E8196C /* MetalProject.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetalProject.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB6D362E2B09723300E8196C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		BB6D36302B09723300E8196C /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -69,6 +71,7 @@
 				BB6D363C2B09723400E8196C /* Info.plist */,
 				BB6D36422B097B5A00E8196C /* Renderer.swift */,
 				BB6D36442B0980D300E8196C /* Shader.metal */,
+				BB4144802B0BE91A005FE07D /* Cube.swift */,
 			);
 			path = MetalProject;
 			sourceTree = "<group>";
@@ -146,6 +149,7 @@
 			files = (
 				BB6D36432B097B5A00E8196C /* Renderer.swift in Sources */,
 				BB6D36332B09723300E8196C /* ViewController.swift in Sources */,
+				BB4144812B0BE91A005FE07D /* Cube.swift in Sources */,
 				BB6D362F2B09723300E8196C /* AppDelegate.swift in Sources */,
 				BB6D36452B0980D300E8196C /* Shader.metal in Sources */,
 				BB6D36312B09723300E8196C /* SceneDelegate.swift in Sources */,
