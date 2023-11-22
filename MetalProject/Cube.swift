@@ -15,16 +15,101 @@ struct Uniforms {
     var color: v3 = v3(1.0, 0.0, 0.0)
 }
 
+struct Material {
+    var name: String
+}
+
+struct OBJModel {
+    var vertices: [v3] = []
+    var normals: [v3] = []
+    var indices: [UInt16] = []
+    var materials: [Material] = []
+
+    init(contentsOfURL url: URL) {
+        do {
+            let data = try String(contentsOf: url, encoding: .utf8)
+            let lines = data.components(separatedBy: .newlines)
+
+            for line in lines {
+                let components = line.components(separatedBy: " ")
+
+                switch components[0] {
+                case "v":
+                    // Parse vertex position
+                    let x = Float(components[1])!
+                    let y = Float(components[2])!
+                    let z = Float(components[3])!
+                    vertices.append(v3(x, y, z))
+
+                case "vn":
+                    // Parse vertex normal
+                    let nx = Float(components[1])!
+                    let ny = Float(components[2])!
+                    let nz = Float(components[3])!
+                    normals.append(v3(nx, ny, nz))
+
+                case "f":
+                    // Parse face indices
+                    for i in 1..<components.count {
+                        let indices = components[i].components(separatedBy: "/")
+                        let vertexIndex = UInt16(indices[0])! - 1
+                        self.indices.append(vertexIndex)
+                    }
+
+                case "usemtl":
+                    // Parse material properties
+                    let materialName = components[1]
+                    let material = Material(name: materialName)
+                    materials.append(material)
+
+                default:
+                    break
+                }
+            }
+        } catch {
+            print("Error reading OBJ file: \(error)")
+        }
+    }
+}
+
+
 class Cube: NSObject {
     var uniforms = Uniforms()
     var vertexBuffer: MTLBuffer?
     var indexBuffer: MTLBuffer?
     
-    init(device: MTLDevice) {
+    init(device: MTLDevice, objFilename: String?) {
         super.init()
-        
-        generateBuffer(device: device)
+
+        if let filename = objFilename {
+            // Load OBJ file and generate buffers
+            if let url = Bundle.main.url(forResource: filename, withExtension: "obj") {
+                generateBufferFromOBJ(device: device, objURL: url)
+            } else {
+                print("Error: Unable to find the OBJ file with name '\(filename)'.")
+            }
+        } else {
+            // Generate cube buffers if no OBJ file provided
+            generateBuffer(device: device)
+        }
     }
+    
+    private func generateBufferFromOBJ(device: MTLDevice, objURL: URL) {
+            // Use the OBJModel structure to load OBJ file and generate buffers
+            let objModel = OBJModel(contentsOfURL: objURL)
+
+            vertexBuffer = device.makeBuffer(
+                bytes: objModel.vertices,
+                length: objModel.vertices.count * MemoryLayout<Vertex>.stride,
+                options: []
+            )
+
+            indexBuffer = device.makeBuffer(
+                bytes: objModel.indices,
+                length: objModel.indices.count * MemoryLayout<UInt16>.size,
+                options: []
+            )
+        }
     
     private func generateBuffer(device: MTLDevice) {
         let v: Float = 1.0

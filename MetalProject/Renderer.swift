@@ -8,6 +8,9 @@
 import MetalKit
 import Spatial
 
+
+
+
 // vertex information sent to vertex shader stage_in
 struct Vertex {
     var position: v3
@@ -28,7 +31,7 @@ class Renderer: NSObject {
     init(device: MTLDevice) {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
-        cube = Cube(device: device)
+        cube = Cube(device: device, objFilename: "Snowman")
         super.init()
         
         generatePipeline()
