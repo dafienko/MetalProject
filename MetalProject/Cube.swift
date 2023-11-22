@@ -14,7 +14,7 @@ struct Uniforms {
     var pMatrix: float4x4 = float4x4(1.0)
     var color: v3 = v3(1.0, 0.0, 0.0)
 }
-
+//just gets the name of the material as of right now not assigning or grabbing any color
 struct Material {
     var name: String
 }
@@ -66,6 +66,10 @@ struct OBJModel {
                     break
                 }
             }
+            print("Vertices: \(vertices)")
+                        print("Normals: \(normals)")
+                        print("Indices: \(indices)")
+                        print("Materials: \(materials)")
         } catch {
             print("Error reading OBJ file: \(error)")
         }
