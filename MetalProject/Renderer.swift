@@ -31,7 +31,8 @@ class Renderer: NSObject {
     init(device: MTLDevice) {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
-        cube = Cube(device: device, objFilename: "Snowman")
+        //cube = Cube(device: device, objFilename: "Snowman")
+        cube = Cube(device: device, objFilename: nil)
         super.init()
         
         generatePipeline()
