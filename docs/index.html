@@ -2,8 +2,25 @@
 <html>
 	<head>
 		<link rel="stylesheet" href="styles.css">
+		<link href="prism.css" rel="stylesheet"/>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
 	</head>
-	<body>
-		hello
+	<body class="line-numbers">
+	<div class="content">
+	<div class="main-column">
+		<h1>MetalKit</h1>
+		<h2>Setup</h2>
+		<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Sequi modi adipisci corrupti, accusamus nulla commodi, porro dolores consectetur, quas repudiandae autem amet quaerat minus sunt tenetur totam veritatis fugiat pariatur.</p>
+
+		<h3 class="filename">test.swift</h3>
+		<pre><code class="language-swift">struct Uniforms {
+	var mvMatrix: float4x4 = float4x4(1.0)
+	var pMatrix: float4x4 = float4x4(1.0)
+	var color: v3 = v3(1.0, 0.0, 0.0)
+}</code></pre>
+
+		<script src="prism.js"></script>
+	</div>
+	</div>
 	</body>
 </html>
