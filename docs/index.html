@@ -6,22 +6,243 @@
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
 	</head>
 	<body class="line-numbers">
+	<div class="modal" id="modal">
+		<div class="modal-content">
+			<img src="images/app.png" class="modal-image" id="modal-image" />
+			<button class="dismiss-modal" id="dismiss-modal">Dismiss</button>
+		</div>
+	</div>
+	<div class="language-swift">
 	<div class="content">
 	<div class="main-column">
 		<h1>Getting Started with MetalKit</h1>
 		<p class="author">By Damien Afienko and Shane Bailey</p>
-		<h2>Setup</h2>
-		<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Sequi modi adipisci corrupti, accusamus nulla commodi, porro dolores consectetur, quas repudiandae autem amet quaerat minus sunt tenetur totam veritatis fugiat pariatur.</p>
+		
 
-		<h3 class="filename">test.swift</h3>
-		<pre><code class="language-swift">struct Uniforms {
-	var mvMatrix: float4x4 = float4x4(1.0)
-	var pMatrix: float4x4 = float4x4(1.0)
-	var color: v3 = v3(1.0, 0.0, 0.0)
+
+
+
+		<h2>Overview</h2>
+		<p class="tutorial-step">This tutorial will explore Metal, Apple's API for graphics and parallel computing on the GPU. We will be using Metal only for graphics in this tutorial. By the end of the tutorial we will have created an app that can render simple OBJ files on IOS.</p>
+
+
+
+
+
+		<h2>Getting Started</h2>
+		<p class="tutorial-step">To follow along, you'll need Xcode installed for developing applications on iOS. We will be using MetalKit, although that should already be installed when you install Xcode.</p>
+
+
+
+
+
+		<h2>Rendering to a View</h2>
+		<p class="tutorial-step">We'll start with a new project. In the 'iOS' tab, select 'App' and click 'Next.' We'll be using Storyboard instead of SwiftUI, and we'll be coding in Swift. Once you've named your project and set the correct options, click 'Next.'</p>
+		<div class="col-img-container">
+			<img src="images/app.png" class="tutorial-image" style="max-width: 46%;"/>
+			<img src="images/new_project.png" class="tutorial-image" style="max-width: 46%;"/>
+		</div>
+
+		<p class="tutorial-step">The first step to using Metal is giving Metal a place to draw. Metal can use any UIView, but MetalKit provides a special "MTKView" that allows us to skip a lot of boilerplate code. In the main Storyboard, open the Library and search "MetalKit View." Drag one onto your main view controller. Feel free to position and size it however you'd like. We'll make our's fill the whole screen by using constraints to fill parent size and position in the center, but the view will work regardless of where it's at. Finally, in our ViewController, we'll need to add an outlet referencing our MTKView. We'll name our's "metalView."</p>
+
+		<div class="col-img-container">
+			<img src="images/storyboard.png" class="tutorial-image" style="max-width: 46%;"/>
+		</div>
+
+		<p class="tutorial-step">Now that we have something to draw on, we can start using Metal in our code. In our ViewController, there's a few things we have to do. (Before starting, be sure to <code>import MetalKit</code>!) First, we need to make a device that represents the GPU on our device. Then, we'll set the clearColor of our MTKView, which is the color Metal resets our color buffer with every frame. We'll also set our MTKView's delegate to the ViewController-- more on that in a second. Finally, we need to make a command queue from our device. </p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>import MetalKit
+
+class ViewController: UIViewController {
+	@IBOutlet weak var metalView: MTKView!
+
+	var commandQueue: MTLCommandQueue!
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+
+		metalView.device = MTLCreateSystemDefaultDevice()
+		metalView.clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0)
+		metalView.delegate = self
+
+		commandQueue = metalView.device?.makeCommandQueue();
+	}
 }</code></pre>
 
-		<script src="prism.js"></script>
+		<p class="tutorial-step">Currently, this code won't compile because we haven't made our ViewController implement a protocol called "MTKViewDelegate." This protocol has two functions. One is for when the view is being resized-- we won't use that one for now. The other is the draw function, which is called every frame. At the moment, we just want to clear the screen, so our draw function will be pretty simple.</p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>// ...
+
+extension ViewController: MTKViewDelegate {
+	func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
+
+	func draw(in view: MTKView) {
+		let buffer = commandQueue.makeCommandBuffer()!
+		let encoder = buffer.makeRenderCommandEncoder(
+			descriptor: metalView.currentRenderPassDescriptor!
+		)!
+		encoder.endEncoding()
+		buffer.present(view.currentDrawable!)
+		buffer.commit()
+	}
+}</code></pre>
+
+		<p class="tutorial-step">Now, when we hit "Run," we should see our clear color in our MTKView.</p>
+
+		<div class="col-img-container">
+			<img src="images/demo1.png" class="tutorial-image-noshadow" style="max-width: 46%; max-height: 400px"/>
+		</div>
+
+		<p>Before we move on, it's helpful to review what we've done so far. Let's break down some Metal terminology:</p>
+		<ul>
+			<li><p><b>Device:</b> a device represents the GPU on whatever device our code is running on.</p></li>
+			<li><p><b>Command Queue:</b> A queue that our device executes commands from. </p></li>
+			<li><p><b>Command Buffer:</b> A temporary storage location for a batch of encoded commands. </p></li>
+			<li><p><b>Command Encoder:</b> A mechanism to encode commands for our device to execute into a command buffer. </p></li>
+		</ul>
+		<p class="tutorial-step">
+			With this in mind, we can start to understand what's going on so far. On initialization, we get a reference to our device. With our device, we make a command queue. Notice how we only have to make a single command queue; every time we draw, we can reuse it. In our draw function, we make a new command buffer every frame. Using the buffer, we make a command encoder to encode our commands we wish to execute that frame. 
+			
+			<br><br> 
+
+			Our encoder is also created from a descriptor argument that uses our metalView's <code>currentRenderPassDescriptor</code>. This is how our encoder knows to clear the color buffer with the color we gave to our metalView; when we set <code>metalView.clearColor</code>, our metalView's <code>currentRenderPassDescriptor</code> gets updated to include our <code>clearColor</code> every frame. We aren't rendering any geometry at the moment, so as soon as our encoder is created, we call <code>endEncoding</code> immediately. Keep in mind, this isn't what actually does the drawing; all we've done is compiled a list of instructions for our GPU device to execute; they haven't actually been executed yet. 
+			
+			<br><br> 
+
+			Now that our buffer has our frame commands encoded, we tell it that the resulting image should be presented on our view's <code>currentDrawable</code> instead of some off-screen render target. Finally, we commit our command buffer, which enqueues our instructions to be executed by our device in our <code>commandQueue</code>. 
+		</p>
+
+
+
+
+
+		<h2>Rendering a Triangle</h2>
+		<p class="tutorial-step">
+			This is where things start to get interesting. In this step, we'll begin transferring data that we interact with to the GPU. Start by creating a new Metal file (File > New File > Metal File) and call it "Shader." In this file, we'll add the following code.
+		</p>
+
+<h3 class="filename">Shader.metal</h3>
+<pre><code class="language-cpp">#include <metal_stdlib>
+using namespace metal;
+
+vertex float4 vertex_shader(const device float3 *vertices [[ buffer(0) ]], uint vertexId [[ vertex_id ]]) {
+	return float4(vertices[vertexId], 1.0);
+}
+
+fragment half4 fragment_shader() {
+	return half4(1.0, 0.0, 0.0, 1.0);
+}
+</code></pre>
+		
+		<p class="tutorial-step">
+			Woah! That's not Swift! What's going on? Well, this is code that's going to be run on the GPU. Unfortunately, there isn't a compiler that can translate Swift to a language the GPU can understand. Instead Metal introduces Metal Shading Langauge (MSL), which is a language based of C++ 14 syntax. This tutorial won't cover much of the MSL syntax, however it isn't much different from normal C++. There are a few decorators used to annotate to the MSL compiler where data is coming from. For instance, in our <code class="language-cpp">vertex_shader</code> function, we have the decorators <code class="language-cpp">[[ buffer(0) ]]</code> and <code class="language-cpp">[[ vertex_id ]]</code>. These tell Metal to put the data from buffer index 0 into our <code class="language-cpp">vertices</code> parameter, and put the id of the current vertex into our <code class="language-cpp">vertexId</code> parameter. 
+			
+			<br><br>
+
+			Our functions also have <code class="language-cpp">vertex</code> and <code class="language-cpp">fragment</code> keywords before them; these just specify what kind of function these functions are. The basic render pipeline consists of three steps: 
+		</p>
+		<ul>
+			<li><p><b>Vertex Shader: </b> A function that runs for each vertex in a vertex buffer. Typically, in this stage, you project world positions to normalized device coordinates (NDC) and set up data you want to be interpolated between vertices for the fragment shader, like color, UV coordinates, etc. </p></li>
+			<li><p><b>Rasterization: </b> This stage is hidden and handled by Metal behind the scenes, but is still important to understand. Depending on the render mode, the takes a set of vertices and figures out which pixels are within that geometric primitive. In our case, we're using triangles, so this stage deduces what pixels (fragments) compose the triangle formed by three vertices for every set of three vertices in our vertex buffer.</p></li>
+			<li><p><b>Fragment Shader: </b>This is the function that runs for every 'fragment' computed in the rasterization stage. Typcially, in this stage we compute the lighting at the fragment, and output the final color of each fragment</p></li>
+		</ul>
+		<p class="tutorial-step">
+			With this in mind, we can begin to understand what we've written in our shader file. Our vertex function takes in an array of vertices and a vertex id, and outputs a float4 with the position being the position of the vertex in the buffer at position <code class="language-cpp">vertexId</code>. Our fragment function simply outputs the color red. 
+		</p>
+
+
+
+		<p class="tutorial-step">
+			Now that our shader code is set up, we need to make our code on the CPU tell the GPU to use our shader code. In addition to our commandQueue, let's add some data to our viewController.
+		</p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>class ViewController: UIViewController {
+    // ... 
+
+    var pipelineState: MTLRenderPipelineState?
+    var vertexBuffer: MTLBuffer?
+    
+    let vertices = [
+        SIMD3<Float>(0.0, 1.0, 0.0),
+        SIMD3<Float>(-1.0, -1.0, 0.0),
+        SIMD3<Float>(1.0, -1.0, 0.0),
+    ]
+	
+	// ...
+</code></pre>
+
+		<p class="tutorial-step">
+			Next, we need to initialize these new values. In <code>viewDidLoad</code>, let's add some code.
+		</p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>override func viewDidLoad() {
+	// ...
+
+	let library = device.makeDefaultLibrary()
+        
+	let pipelineDescriptor = MTLRenderPipelineDescriptor()
+	pipelineDescriptor.vertexFunction = library?.makeFunction(name: "vertex_shader")
+	pipelineDescriptor.fragmentFunction = library?.makeFunction(name: "fragment_shader")
+	pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+	pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+	
+	pipelineState = try! device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+	
+	vertexBuffer = device.makeBuffer(
+		bytes: vertices,
+		length: vertices.count * MemoryLayout<SIMD3<Float>>.stride,
+		options: []
+	)
+}</code></pre>
+
+		<p class="tutorial-step">
+			In this code, we first create a library. Then, we make a <code>MTLRenderPipelineDescriptor</code> and add our two shader functions from our library. The library just looks in our MSL code for the functions with the names we've provided, compiles them, and attaches them to the <code>pipelineDescriptor</code>. Next, we specify the format of our color and depth buffer. Once we've filled out our descriptor, we make an <code>MTLRenderPipelineState</code> from it. This pipeline state object just tells Metal which pipeline to use when we encode commands-- we'll see this later in our draw function. Finally we make a <code>MTLBuffer</code> that has our vertex data. 
+		</p>
+
+		<p class="tutorial-step">
+			With that setup out of the way, we can finally update our draw function
+		</p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>func draw(in view: MTKView) {
+	// ...
+	let encoder = buffer.makeRenderCommandEncoder(
+		descriptor: metalView.currentRenderPassDescriptor!
+	)!
+	
+	encoder.setRenderPipelineState(pipelineState!)
+	encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+	encoder.drawPrimitives(
+		type: .triangle,
+		vertexStart: 0,
+		vertexCount: vertices.count
+	)
+	
+	encoder.endEncoding()
+	// ...
+}</code></pre>
+
+		<p class="tutorial-step">
+			First, we make the GPU use our pipeline state with our custom vertex and fragment shader functions. Then, we bind our <code>vertexBuffer</code> to the vertex buffer index 0. Lastly, we call <code>drawPrimitives</code> and tell the GPU to draw triangles, starting at the first vertex, and go up to the number of vertices we have.
+
+			<br><br>
+
+			When we run, if all is well, we should now see a red triangle rendered across our MTKView.
+		</p>
+
+		<div class="col-img-container">
+			<img src="images/demo2.png" class="tutorial-image-noshadow" style="max-width: 46%; max-height: 400px"/>
+		</div>
+
 	</div>
 	</div>
-	</body>
+	</div>
+
+	<script src="prism.js"></script>
+	<script src="modal.js"></script>
+</body>
 </html>
