@@ -23,14 +23,19 @@
 
 
 		<h2>Overview</h2>
-		<p class="tutorial-step">This tutorial will explore Metal, Apple's API for graphics and parallel computing on the GPU. We will be using Metal only for graphics in this tutorial. By the end of the tutorial we will have created an app that can render simple OBJ files on IOS.</p>
+		<p class="tutorial-step">This tutorial will explore Metal, Apple's API for graphics and parallel computing on the GPU. We will be using Metal only for graphics in this tutorial, and by the end, we will have created an app that can render simple .obj files on IOS.</p>
 
 
 
 
 
 		<h2>Getting Started</h2>
-		<p class="tutorial-step">To follow along, you'll need Xcode installed for developing applications on iOS. We will be using MetalKit, although that should already be installed when you install Xcode.</p>
+		<p class="tutorial-step">
+			To follow along, you'll need Xcode installed for developing applications on iOS. We will be using MetalKit, although that should already come installed with Xcode. 
+			<br><br>
+
+			<b>Note: </b>Concepts such as stages of the render pipeline, indexed-rendering, and matrix math as it relates to graphics will all be used in this tutorial. Some of these concepts may be reviewed briefly, although explaining each of these concepts in-depth is outside the scope of this tutorial. Luckily, computer graphics is a well-established field and there is no shortage of resources that explore each topic on its own in-depth. See "See Also" section for more information.
+		</p>
 
 
 
@@ -70,7 +75,7 @@ class ViewController: UIViewController {
 	}
 }</code></pre>
 
-		<p class="tutorial-step">Currently, this code won't compile because we haven't made our ViewController implement a protocol called "MTKViewDelegate." This protocol has two functions. One is for when the view is being resized-- we won't use that one for now. The other is the draw function, which is called every frame. At the moment, we just want to clear the screen, so our draw function will be pretty simple.</p>
+		<p class="tutorial-step">Currently, this code won't compile because we haven't made our ViewController implement a protocol called "MTKViewDelegate." This protocol has two functions: one is for when the view is being resized-- we won't use that one for now. The other is the draw function, which is called every frame. At the moment, we just want to clear the screen, so our draw function will be pretty simple.</p>
 
 <h3 class="filename">ViewController.swift</h3>
 <pre><code>// ...
@@ -145,7 +150,7 @@ fragment half4 fragment_shader() {
 		</p>
 		<ul>
 			<li><p><b>Vertex Shader: </b> A function that runs for each vertex in a vertex buffer. Typically, in this stage, you project world positions to normalized device coordinates (NDC) and set up data you want to be interpolated between vertices for the fragment shader, like color, UV coordinates, etc. </p></li>
-			<li><p><b>Rasterization: </b> This stage is hidden and handled by Metal behind the scenes, but is still important to understand. Depending on the render mode, the takes a set of vertices and figures out which pixels are within that geometric primitive. In our case, we're using triangles, so this stage deduces what pixels (fragments) compose the triangle formed by three vertices for every set of three vertices in our vertex buffer.</p></li>
+			<li><p><b>Rasterization: </b> This stage is hidden and handled by Metal behind the scenes, but is still important to understand. Depending on the render mode, it takes a set of vertices and figures out which fragments (pixels) are within that geometric primitive. In our case, we're using triangles, so this stage deduces which fragments compose the triangle formed by three vertices for every set of three vertices in our vertex buffer.</p></li>
 			<li><p><b>Fragment Shader: </b>This is the function that runs for every 'fragment' computed in the rasterization stage. Typcially, in this stage we compute the lighting at the fragment, and output the final color of each fragment</p></li>
 		</ul>
 		<p class="tutorial-step">
@@ -166,9 +171,9 @@ fragment half4 fragment_shader() {
     var vertexBuffer: MTLBuffer?
     
     let vertices = [
-        SIMD3<Float>(0.0, 1.0, 0.0),
-        SIMD3<Float>(-1.0, -1.0, 0.0),
-        SIMD3<Float>(1.0, -1.0, 0.0),
+        SIMD3&lt;Float&gt;(0.0, 1.0, 0.0),
+        SIMD3&lt;Float&gt;(-1.0, -1.0, 0.0),
+        SIMD3&lt;Float&gt;(1.0, -1.0, 0.0),
     ]
 	
 	// ...
@@ -194,7 +199,7 @@ fragment half4 fragment_shader() {
 	
 	vertexBuffer = device.makeBuffer(
 		bytes: vertices,
-		length: vertices.count * MemoryLayout<SIMD3<Float>>.stride,
+		length: vertices.count * MemoryLayout&lt;SIMD3&lt;Float&gt;&gt;.stride,
 		options: []
 	)
 }</code></pre>
@@ -237,6 +242,300 @@ fragment half4 fragment_shader() {
 		<div class="col-img-container">
 			<img src="images/demo2.png" class="tutorial-image-noshadow" style="max-width: 46%; max-height: 400px"/>
 		</div>
+
+
+
+		<h2>Rendering in 3D</h2>
+		<p class="tutorial-step">
+		Before we start loading .obj files, we need to make our renderer work in 3D. To do this, there are a number of changes we need to make. 
+		
+		<br><br>
+
+		First, we need to pass some more data to the GPU. Specifically, we need to add normal data to each of our vertices. We won't be using normal data yet, but we'll need it later for more interesting shaders. Furthermore, we'll want to add some uniform data that our vertex shader can use, such as the model or projection transform matrices. 
+
+		<br><br>
+
+		Secondly, we'll need to refactor our shader code to be able to accept our newly added data. Then, we'll need to use the data to render a 3D scene.
+
+		<br><br>
+
+		Because there's a lot that can go wrong, we'll break these changes into two bite-sized chunks that we can test before moving on. We'll start by updating our shaders. In our vertex shader, instead of reading directly from our Metal buffers, we're going to have two intermediate structures for representing vertex data at different points along the render pipeline. Our first structure will be accepted by our vertex shader called <code class="language-cpp">VertexIn</code>. Instead of the <code class="language-cpp">[[ buffer(0) ]]</code> decorator, we're going to use the <code class="language-cpp">[[ stage_in ]]</code> decorator, which gets filled by the data in the vertex buffer for the vertex shader. Here's what our new shader code looks like:
+		</p>
+
+<h3 class="filename">Shader.metal</h3>
+<pre><code class="language-cpp">#include &gt;metal_stdlib&lt;
+using namespace metal;
+
+struct VertexIn {
+	float3 position [[ attribute(0) ]];
+	float3 normal [[ attribute(1) ]];
+};
+
+struct VertexOut {
+	float4 position [[ position ]];
+	float3 normal;
+};
+
+vertex VertexOut vertex_shader(const VertexIn vertexIn [[ stage_in ]]) {
+	VertexOut vertexOut = { 0 };
+	
+	vertexOut.position = float4(vertexIn.position, 1.0);
+	vertexOut.normal = vertexIn.normal;
+	
+	return vertexOut;
+}
+
+fragment half4 fragment_shader(const VertexOut vertexFragment [[ stage_in ]]) {
+	return half4(1.0, 0.0, 0.0, 1.0);
+}</code></pre>
+
+		<p class="tutorial-step">
+			Next, let's update our Swift code to use our new shaders. 
+		</p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>typealias v3f = SIMD3&gt;Float&lt;
+
+struct Vertex {
+	var position: v3f
+	var normal: v3f
+}
+
+class ViewController: UIViewController {
+    // ...
+    
+    let vertices = [
+        Vertex(position: v3f(0.0, 1.0, 0.0), normal: v3f(0, 0, 1.0)),
+        Vertex(position: v3f(-1.0, -1.0, 0.0), normal: v3f(0, 0, 1.0)),
+        Vertex(position: v3f(1.0, -1.0, 0.0), normal: v3f(0, 0, 1.0)),
+    ]
+    
+    let indices: [UInt16] = [0, 1, 2]
+
+	override func viewDidLoad() {
+        // ...
+
+        commandQueue = metalView.device?.makeCommandQueue();
+        
+        let vertexDescriptor = MTLVertexDescriptor()
+        vertexDescriptor.attributes[0].format = .float3
+        vertexDescriptor.attributes[0].offset = 0
+        vertexDescriptor.attributes[0].bufferIndex = 0
+        
+        vertexDescriptor.attributes[1].format = .float3
+        vertexDescriptor.attributes[1].offset = MemoryLayout&gt;v3f&lt;.stride
+        vertexDescriptor.attributes[1].bufferIndex = 0
+        
+        vertexDescriptor.layouts[0].stride = MemoryLayout&gt;Vertex&lt;.stride
+        
+		// ...
+
+        pipelineDescriptor.vertexDescriptor = vertexDescriptor
+        
+        pipelineState = try! device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        
+        vertexBuffer = device.makeBuffer(
+            bytes: vertices,
+            length: vertices.count * MemoryLayout&gt;Vertex&lt;.stride,
+            options: []
+        )
+        
+        indexBuffer = device.makeBuffer(
+            bytes: indices,
+            length: indices.count * MemoryLayout&gt;UInt16&lt;.size,
+            options: []
+        )
+    }
+}
+
+
+extension ViewController: MTKViewDelegate {
+	// ... 
+
+	func draw(in view: MTKView) {
+		// ... 
+
+		encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+
+		// replace drawPrimitives with drawIndexedPrimitves
+		encoder.drawIndexedPrimitives(
+			type: .triangle,
+			indexCount: indices.count,
+			indexType: .uint16,
+			indexBuffer: indexBuffer!,
+			indexBufferOffset: 0
+		)
+		
+		encoder.endEncoding()
+
+		// ...
+	}
+}
+</code></pre>
+
+		<p class="tutorial-step">
+			Essentially, this code makes two changes. First, instead of sending just positions to the shader, we send our own custom struct that contains both position and normal data. Notice how now we have to specify to our pipeline descriptor a vertex descriptor. Our vertex descriptor describes where our data is coming from and what kind of data each attribute is pointing at. In our shader, each of the fields in our <code class="language-cpp">VertexIn</code> struct has an <code class="language-cpp">[[ attribute( ) ]]</code> decorator that specifies which vertex buffer to pull data from. 
+
+			<br><br>
+
+			The other change this code makes is instead of rendering straight from the vertex buffer, we use indexed-rendering. In the case of our triangle, it doesn't make a lot of sense, but when we start using more complex models, indexed rendering will save us a lot of memory on the GPU. In short, models generally have vertices that are shared and a lot of data is redundant. We can mitigate this redundancy by using an index buffer to refer to vertices in our vertex buffer instead of just repeating the same vertex information every time we want to use it to render.
+
+			<br><br>
+
+			At this point, if we run, we should see the same triangle as before. We aren't in 3D yet, but we're getting there.
+
+			<br><br>
+
+			This next step will be much easier. All we have to do is get our uniforms set up to communicate our model and projection matrix to our vertex shader. Again, starting with our shader code, we need to make a few changes:
+
+
+		</p>
+
+<h3 class="filename">Shader.metal</h3>
+<pre><code class="language-cpp">// ...
+
+struct Uniforms {
+	float4x4 modelMatrix;
+	float4x4 projectionMatrix;
+};
+
+// ... 
+
+vertex VertexOut vertex_shader(const VertexIn vertexIn [[ stage_in ]], constant Uniforms &uniforms [[ buffer(1) ]]) {
+    VertexOut vertexOut = { 0 };
+    
+    vertexOut.position = uniforms.projectionMatrix * uniforms.modelMatrix * float4(vertexIn.position, 1.0);
+    vertexOut.normal = vertexIn.normal;
+    
+    return vertexOut;
+}
+
+// ...
+</code></pre>
+
+		<p class="tutorial-step">
+			Here, we've added another struct for our uniform data that contains our model and perspective projection matrices. Unlike our <code class="language-cpp">VertexIn</code> struct, we don't need to specify attribute locations. Instead, the bytes we send from our Swift code will map one to one to our bytes in the struct, so as long as the structs have identical signatures, the data should transfer seamlessly without the need for descriptors.
+
+			<br><br>
+
+			Next, as per usual, we're going to update our Swift code to interface correctly with our shader code:
+		</p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>// ... 
+import Spatial
+
+typealias v3f = SIMD3&gt;Float&lt;
+
+struct Uniforms {
+	var modelMatrix: float4x4 = float4x4(1.0)
+	var projMatrix: float4x4 = float4x4(1.0)
+}
+
+// ...
+
+extension ViewController: MTKViewDelegate {
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
+    
+    func draw(in view: MTKView) {
+        // ...
+        
+        var uniforms = Uniforms(
+            modelMatrix: float4x4(
+				AffineTransform3D(translation: Vector3D(x: 0.0, y: 0.0, z: -10.0))
+			),
+            projMatrix: float4x4(ProjectiveTransform3D(
+                fovyRadians: 45.0 * (Double.pi / 180.0),
+                aspectRatio: view.drawableSize.width / view.drawableSize.height,
+                nearZ: 0.1,
+                farZ: 100.0)
+            )
+        )
+        
+        encoder.setRenderPipelineState(pipelineState!)
+        encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout&gt;Uniforms&lt;.size, index: 1)
+        
+		// ...
+    }
+}</code></pre>
+
+		<p class="language-cpp">
+			All we've done this time is copy our <code>Uniforms</code> struct on the CPU side, and sent it with our matrices filled out to the GPU. This tutorial won't cover much matrix math, but for all our matrix math we'll be using Apple's Spatial library. At this point, we're only utilizing the constructors for translation and perspective projection matrices.
+
+			<br><br>
+
+			In our uniforms, we've put our model at the coordinates (0, 0, -10). In normalized device coordinates, +X is right, +Y is up, and +Z is out of the screen towards you. So, our triangle should be 10 units into the screen. Our projection matrix has near-Z at .1 and far-Z at 100, and it has a vertical field of view of 45°. If we've done everything correctly, our triangle should appear further away then we've seen and it should no longer stretch perfectly across the screen.
+		</p>
+
+		<div class="col-img-container">
+			<img src="images/demo3.png" class="tutorial-image-noshadow" style="max-width: 46%; max-height: 400px"/>
+		</div>
+
+		<p class="language-cpp">
+			Now that we're in 3D, there's one more thing we need to do in preparation for rendering more complex models: enabling depth-testing. Right now, if we rendered a model with faces that could occlude one another, there's no guarantee the closer faces would be rendered on top of the more distant ones. To fix this, we have to make the following changes to our Swift code:
+		</p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>// ... 
+
+class ViewController: UIViewController {
+	// ...
+	var depthStencilState: MTLDepthStencilState?
+	// ...
+
+	override func viewDidLoad() {
+        // ...
+        
+        let depthStencilDescriptor = MTLDepthStencilDescriptor()
+        depthStencilDescriptor.depthCompareFunction = .less
+        depthStencilDescriptor.isDepthWriteEnabled = true
+        depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+
+		// ...
+	}
+
+}
+
+extension ViewController: MTKViewDelegate {
+	func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
+	
+	func draw(in view: MTKView) {
+		// ...
+		
+		encoder.setDepthStencilState(depthStencilState!)
+		encoder.setRenderPipelineState(pipelineState!)
+		
+		// ...
+	}
+}</code></pre>
+
+		<p class="language-cpp">
+			The <code>depthStencilState</code> just tells the GPU to discard fragments if their z coordinate is less than existing fragments at the fragment position.
+
+			<br><br>
+
+			With all this setup complete, we can finally start rendering more complex geometry!
+		</p>
+
+
+
+
+
+
+
+		<h2>Rendering .obj Files</h2>
+
+
+
+
+
+
+
+		<h2>See Also</h2>
+		<p>
+		<a href="https://www.youtube.com/watch?v=TEqbZ7Ai7AA&list=PL23Revp-82LJG3vcDPm8w7b5HTKjBOY0W&index=1&ab_channel=Kodeco">Learning Metal for iOS from the Ground Up - raywenderlich.com</a>
+		</p>
 
 	</div>
 	</div>
