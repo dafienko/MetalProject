@@ -60,7 +60,6 @@ class Cube: NSObject {
             }
             indices.append(contentsOf: index)
         }
-        
         add_face(a: positions[0], b: positions[1], c: positions[2], d: positions[3], normal: up)
         add_face(a: positions[4], b: positions[5], c: positions[6], d: positions[7], normal: -up)
         
@@ -75,8 +74,6 @@ class Cube: NSObject {
             length: vertices.count * MemoryLayout<Vertex>.stride,
             options: []
         )
-        print("cube indiciescount")
-        print(indices.count)
         indexBuffer = device.makeBuffer(
             bytes: indices,
             length: indices.count * MemoryLayout<UInt16>.size,

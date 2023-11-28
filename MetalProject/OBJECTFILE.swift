@@ -17,7 +17,8 @@ struct Material {
 }
 
 struct OBJModel {
-    var vertices: [v3] = []
+    var positions: [v3] = []
+    var vertices: [Vertex] = []
     var normals: [v3] = []
     var indices: [UInt16] = []
     var materials: [Material] = []
@@ -43,7 +44,7 @@ struct OBJModel {
                     let y = Float(components[2])!
                     let z = Float(components[3])!
                     let vertex = v3(x, y, z)
-                    vertices.append(vertex)
+                    positions.append(vertex)
 
                     // Update maxVertexValues
                     maxVertexValues.x = max(maxVertexValues.x, abs(vertex.x))
@@ -62,20 +63,36 @@ struct OBJModel {
                     normals.append(v3(nx, ny, nz))
 
                 case "f":
-                    var vertices: [Vertex] = []
-                    var indices: [UInt16] = []
+                    let aComponent = components[1].components(separatedBy: "/")
+                    guard let a = Int(aComponent[0]) else {
+                        fatalError("Invalid face definition in the OBJ file.")
+                    }
+                    let bComponent = components[2].components(separatedBy: "/")
+                    guard let b = Int(bComponent[0]) else {
+                        fatalError("Invalid face definition in the OBJ file.")
+                    }
+                    let cComponent = components[3].components(separatedBy: "/")
+                    guard let c = Int(cComponent[0]) else {
+                        fatalError("Invalid face definition in the OBJ file.")
+                    }
+                    
+                    let dComponent = components[3].components(separatedBy: "/")
+                    guard let d = Int(dComponent.last ?? "") else {
+                        fatalError("Invalid face definition in the OBJ file.")
+                    }
+                    
                     let off: UInt16 = UInt16(vertices.count)
                     vertices.append(contentsOf: [
-                        Vertex(position: vertices[1], normal: normals[1]),
-                        Vertex(position: 2, normal: normal),
-                        Vertex(position: 3, normal: normal)
+                        Vertex(position: positions[a-1], normal: normals[d-1]),
+                        Vertex(position: positions[b-1], normal: normals[d-1]),
+                        Vertex(position: positions[c-1], normal: normals[d-1]),
                     ])
                     
                     let index = [0, 1, 2].map { (i) -> UInt16 in
                         return i + off
                     }
                     indices.append(contentsOf: index)
-                    }
+    
                     
                 case "usemtl":
                     let materialName = components[1]
@@ -120,8 +137,8 @@ class OBJECTFILE: NSObject{
     private func generateBufferFromOBJ(device: MTLDevice, objURL: URL)-> OBJModel {
             // Use the OBJModel structure to load OBJ file and generate buffers
             var objModel = OBJModel(contentsOfURL: objURL)
-            let scaleFactor: Float = 1
-            objModel.vertices = objModel.vertices.map { $0 * scaleFactor }
+            let scaleFactor: Float = 0.01
+            objModel.positions = objModel.positions.map { $0 * scaleFactor }
             
 
             

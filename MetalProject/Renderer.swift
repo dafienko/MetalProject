@@ -30,7 +30,7 @@ class Renderer: NSObject {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
         cube = Cube(device: device)
-        snowman = OBJECTFILE(device: device, objFilename: "Snowman")
+        snowman = OBJECTFILE(device: device, objFilename: "Cubed")
         super.init()
         
         generatePipeline()
@@ -69,6 +69,19 @@ class Renderer: NSObject {
 
 extension Renderer: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
+    func orthographicProjectionMatrix(width: Float, height: Float, depth: Float) -> float4x4 {
+            let halfWidth = width / 2.0
+            let halfHeight = height / 2.0
+            let halfDepth = depth / 2.0
+
+            // Orthographic projection matrix
+            return float4x4(columns: (
+                SIMD4<Float>(1.0 / halfWidth, 0, 0, 0),
+                SIMD4<Float>(0, 1.0 / halfHeight, 0, 0),
+                SIMD4<Float>(0, 0, -1.0 / halfDepth, 0),
+                SIMD4<Float>(0, 0, 0, 1.0)
+            ))
+        }
     
     func draw(in view: MTKView) {
         time += 1.0 / Float(view.preferredFramesPerSecond)
