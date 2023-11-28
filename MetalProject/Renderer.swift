@@ -22,6 +22,7 @@ class Renderer: NSObject {
     var pipelineState: MTLRenderPipelineState?
     var depthStencilState: MTLDepthStencilState?
     let cube: Cube
+    let snowman: OBJECTFILE
     
     var time: Float = 0.0;
     
@@ -29,6 +30,7 @@ class Renderer: NSObject {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
         cube = Cube(device: device)
+        snowman = OBJECTFILE(device: device, objFilename: "Snowman")
         super.init()
         
         generatePipeline()
@@ -90,8 +92,8 @@ extension Renderer: MTKViewDelegate {
             farZ: 100.0)
         )
         
-        cube.render(time: time, encoder: commandEncoder, projMat: projMat)
-        
+        //cube.render(time: time, encoder: commandEncoder, projMat: projMat)
+        snowman.objRender(time: time, encoder: commandEncoder, projMat: projMat)
         commandEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()

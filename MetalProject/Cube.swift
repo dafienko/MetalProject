@@ -75,7 +75,8 @@ class Cube: NSObject {
             length: vertices.count * MemoryLayout<Vertex>.stride,
             options: []
         )
-        
+        print("cube indiciescount")
+        print(indices.count)
         indexBuffer = device.makeBuffer(
             bytes: indices,
             length: indices.count * MemoryLayout<UInt16>.size,
