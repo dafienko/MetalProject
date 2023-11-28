@@ -10,7 +10,6 @@ import Spatial
 
 
 
-
 // vertex information sent to vertex shader stage_in
 struct Vertex {
     var position: v3
@@ -25,6 +24,7 @@ class Renderer: NSObject {
     var pipelineState: MTLRenderPipelineState?
     var depthStencilState: MTLDepthStencilState?
     let cube: Cube
+    let cubeNOP: Cube
     
     var time: Float = 0.0;
     
@@ -32,7 +32,7 @@ class Renderer: NSObject {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
         cube = Cube(device: device, objFilename: "Snowman")
-        //cube = Cube(device: device, objFilename: nil)
+        cubeNOP = Cube(device: device, objFilename: nil)
         super.init()
         
         generatePipeline()
@@ -71,7 +71,25 @@ class Renderer: NSObject {
 
 extension Renderer: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
-    
+    ////////////////////////////////////////////
+    /*
+    func orthographicProjectionMatrix(width: Float, height: Float, depth: Float) -> float4x4 {
+        let halfWidth = width / 2.0
+        let halfHeight = height / 2.0
+        let halfDepth = depth / 2.0
+
+        // Orthographic projection matrix
+        return float4x4(columns: (
+            SIMD4<Float>(1.0 / halfWidth, 0, 0, 0),
+            SIMD4<Float>(0, 1.0 / halfHeight, 0, 0),
+            SIMD4<Float>(0, 0, -1.0 / halfDepth, 0),
+            SIMD4<Float>(0, 0, 0, 1.0)
+        ))
+    }
+
+
+    */
+    ////////////////////////////////////////
     func draw(in view: MTKView) {
         time += 1.0 / Float(view.preferredFramesPerSecond)
         
@@ -90,11 +108,17 @@ extension Renderer: MTKViewDelegate {
         let projMat = simd_float4x4(ProjectiveTransform3D(
             fovyRadians: 45.0 * (Double.pi / 180.0),
             aspectRatio: view.drawableSize.width / view.drawableSize.height,
-            nearZ: 0.1,
-            farZ: 100.0)
+            nearZ: 100,
+            farZ: 1000.0)
         )
-        
-        cube.render(time: time, encoder: commandEncoder, projMat: projMat)
+        if let cubeObjModel = cube.objModel {
+            //let projMat2 = orthographicProjectionMatrix(width: cubeObjModel.maxVertexValues.x, height: cubeObjModel.maxVertexValues.y, depth: cubeObjModel.maxVertexValues.z)
+            // Use projMat2 as needed
+            //debugPrint("projMat2:", projMat2)
+                        
+            //cube.objRender(time: time, encoder: commandEncoder, projMat: projMat)
+        }
+        cubeNOP.render(time: time, encoder: commandEncoder, projMat: projMat)
         
         commandEncoder.endEncoding()
         commandBuffer.present(drawable)
