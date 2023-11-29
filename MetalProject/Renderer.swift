@@ -30,7 +30,7 @@ class Renderer: NSObject {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
         cube = Cube(device: device)
-        snowman = OBJECTFILE(device: device, objFilename: "Cubed")
+        snowman = OBJECTFILE(device: device, objFilename: "OBJTEST")
         super.init()
         
         generatePipeline()
@@ -70,15 +70,11 @@ class Renderer: NSObject {
 extension Renderer: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
     func orthographicProjectionMatrix(width: Float, height: Float, depth: Float) -> float4x4 {
-            let halfWidth = width / 2.0
-            let halfHeight = height / 2.0
-            let halfDepth = depth / 2.0
-
             // Orthographic projection matrix
             return float4x4(columns: (
-                SIMD4<Float>(1.0 / halfWidth, 0, 0, 0),
-                SIMD4<Float>(0, 1.0 / halfHeight, 0, 0),
-                SIMD4<Float>(0, 0, -1.0 / halfDepth, 0),
+                SIMD4<Float>(1.0 / width, 0, 0, 0),
+                SIMD4<Float>(0, 1.0 / height, 0, 0),
+                SIMD4<Float>(0, 0, -1.0 / depth, 0),
                 SIMD4<Float>(0, 0, 0, 1.0)
             ))
         }
@@ -101,12 +97,16 @@ extension Renderer: MTKViewDelegate {
         let projMat = simd_float4x4(ProjectiveTransform3D(
             fovyRadians: 45.0 * (Double.pi / 180.0),
             aspectRatio: view.drawableSize.width / view.drawableSize.height,
-            nearZ: 0.1,
-            farZ: 100.0)
+            nearZ: 0.001,
+            farZ: 5000.0)
         )
         
+        if let objModel = snowman.objModel {
+            let projMat2 = orthographicProjectionMatrix(width: 1.25*objModel.maxVertexValues.x, height: 1*objModel.maxVertexValues.y, depth: 2*objModel.maxVertexValues.z)
+            // Use projMat2 as needed
+            snowman.objRender(time: time, encoder: commandEncoder, projMat: projMat2)
+        }
         //cube.render(time: time, encoder: commandEncoder, projMat: projMat)
-        snowman.objRender(time: time, encoder: commandEncoder, projMat: projMat)
         commandEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()

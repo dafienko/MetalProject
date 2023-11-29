@@ -35,76 +35,119 @@ struct OBJModel {
             //var currentMaterial = Material(name: "Default", color: v3(1.0, 1.0, 1.0))
 
             for line in lines {
-                let components = line.components(separatedBy: " ")
-
-                switch components[0] {
-                case "v":
-                    // Parse vertex position
-                    let x = Float(components[1])!
-                    let y = Float(components[2])!
-                    let z = Float(components[3])!
-                    let vertex = v3(x, y, z)
-                    positions.append(vertex)
-
-                    // Update maxVertexValues
-                    maxVertexValues.x = max(maxVertexValues.x, abs(vertex.x))
-                    maxVertexValues.y = max(maxVertexValues.y, abs(vertex.y))
-                    maxVertexValues.z = max(maxVertexValues.z, abs(vertex.z))
-                    
-                    minVertexValues.x = min(maxVertexValues.x, abs(vertex.x))
-                    minVertexValues.y = min(maxVertexValues.y, abs(vertex.y))
-                    minVertexValues.z = min(maxVertexValues.z, abs(vertex.z))
-
-                case "vn":
-                    // Parse vertex normal
-                    let nx = Float(components[1])!
-                    let ny = Float(components[2])!
-                    let nz = Float(components[3])!
-                    normals.append(v3(nx, ny, nz))
-
-                case "f":
-                    let aComponent = components[1].components(separatedBy: "/")
-                    guard let a = Int(aComponent[0]) else {
-                        fatalError("Invalid face definition in the OBJ file.")
+                let components = line.components(separatedBy: " ").filter { !$0.isEmpty }
+                //if components equals nothing dont run the switch
+                if !components.isEmpty {
+                    switch components[0] {
+                    case "v":
+                        // Parse vertex position
+                        let x = Float(components[1])!
+                        let y = Float(components[2])!
+                        let z = Float(components[3])!
+                        let vertex = v3(x, y, z)
+                        positions.append(vertex)
+                        
+                        // Update maxVertexValues
+                        maxVertexValues.x = max(maxVertexValues.x, abs(vertex.x))
+                        maxVertexValues.y = max(maxVertexValues.y, abs(vertex.y))
+                        maxVertexValues.z = max(maxVertexValues.z, abs(vertex.z))
+                        
+                        minVertexValues.x = min(maxVertexValues.x, abs(vertex.x))
+                        minVertexValues.y = min(maxVertexValues.y, abs(vertex.y))
+                        minVertexValues.z = min(maxVertexValues.z, abs(vertex.z))
+                        
+                    case "vn":
+                        // Parse vertex normal
+                        let nx = Float(components[1])!
+                        let ny = Float(components[2])!
+                        let nz = Float(components[3])!
+                        normals.append(v3(nx, ny, nz))
+                        
+                    case "f":
+                        //if there are 3 components
+                        if components.count == 4 {
+                            let aComponent = components[1].components(separatedBy: "/")
+                            guard let a = Int(aComponent[0]) else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            let bComponent = components[2].components(separatedBy: "/")
+                            guard let b = Int(bComponent[0]) else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            let cComponent = components[3].components(separatedBy: "/")
+                            guard let c = Int(cComponent[0]) else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            
+                            let dComponent = components[3].components(separatedBy: "/")
+                            guard let d = Int(dComponent.last ?? "") else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            
+                            let off: UInt16 = UInt16(vertices.count)
+                            vertices.append(contentsOf: [
+                                Vertex(position: positions[a-1], normal: normals[d-1]),
+                                Vertex(position: positions[b-1], normal: normals[d-1]),
+                                Vertex(position: positions[c-1], normal: normals[d-1]),
+                            ])
+                            
+                            let index = [0, 1, 2].map { (i) -> UInt16 in
+                                return i + off
+                            }
+                            indices.append(contentsOf: index)
+                        }
+                        if components.count == 5{
+                            let aComponent = components[1].components(separatedBy: "/")
+                            guard let a = Int(aComponent[0]) else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            let bComponent = components[2].components(separatedBy: "/")
+                            guard let b = Int(bComponent[0]) else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            let cComponent = components[3].components(separatedBy: "/")
+                            guard let c = Int(cComponent[0]) else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            let dComponent = components[4].components(separatedBy: "/")
+                            guard let d = Int(dComponent[0]) else {
+                                print(components)
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            
+                            let eComponent = components[3].components(separatedBy: "/")
+                            guard let e = Int(eComponent.last ?? "") else {
+                                fatalError("Invalid face definition in the OBJ file.")
+                            }
+                            
+                            let off: UInt16 = UInt16(vertices.count)
+                            vertices.append(contentsOf: [
+                                Vertex(position: positions[a-1], normal: normals[e-1]),
+                                Vertex(position: positions[b-1], normal: normals[e-1]),
+                                Vertex(position: positions[c-1], normal: normals[e-1]),
+                                Vertex(position: positions[d-1], normal: normals[e-1]),
+                            ])
+                            
+                            let index = [0, 1, 2,0,2,3].map { (i) -> UInt16 in
+                                return i + off
+                            }
+                            indices.append(contentsOf: index)
+                            
+                        }
+                        
+                        
+                    case "usemtl":
+                        let materialName = components[1]
+                        if let existingMaterial = materials.first(where: { $0.name == materialName }) {
+                        } else {
+                            // Create a new material with a default color
+                            let newMaterial = Material(name: materialName, color: v3(1.0, 0.0, 0.0))
+                            materials.append(newMaterial)
+                        }
+                        
+                    default:
+                        break
                     }
-                    let bComponent = components[2].components(separatedBy: "/")
-                    guard let b = Int(bComponent[0]) else {
-                        fatalError("Invalid face definition in the OBJ file.")
-                    }
-                    let cComponent = components[3].components(separatedBy: "/")
-                    guard let c = Int(cComponent[0]) else {
-                        fatalError("Invalid face definition in the OBJ file.")
-                    }
-                    
-                    let dComponent = components[3].components(separatedBy: "/")
-                    guard let d = Int(dComponent.last ?? "") else {
-                        fatalError("Invalid face definition in the OBJ file.")
-                    }
-                    
-                    let off: UInt16 = UInt16(vertices.count)
-                    vertices.append(contentsOf: [
-                        Vertex(position: positions[a-1], normal: normals[d-1]),
-                        Vertex(position: positions[b-1], normal: normals[d-1]),
-                        Vertex(position: positions[c-1], normal: normals[d-1]),
-                    ])
-                    
-                    let index = [0, 1, 2].map { (i) -> UInt16 in
-                        return i + off
-                    }
-                    indices.append(contentsOf: index)
-    
-                    
-                case "usemtl":
-                    let materialName = components[1]
-                    if let existingMaterial = materials.first(where: { $0.name == materialName }) {
-                    } else {
-                        // Create a new material with a default color
-                        let newMaterial = Material(name: materialName, color: v3(1.0, 0.0, 0.0))
-                        materials.append(newMaterial)
-                    }
-
-                default:
-                    break
                 }
             }
 
@@ -137,8 +180,6 @@ class OBJECTFILE: NSObject{
     private func generateBufferFromOBJ(device: MTLDevice, objURL: URL)-> OBJModel {
             // Use the OBJModel structure to load OBJ file and generate buffers
             var objModel = OBJModel(contentsOfURL: objURL)
-            let scaleFactor: Float = 0.01
-            objModel.positions = objModel.positions.map { $0 * scaleFactor }
             
 
             
@@ -170,14 +211,17 @@ class OBJECTFILE: NSObject{
                 let boundingBoxSize = objModel.maxVertexValues - objModel.minVertexValues
             
                 let boundingBoxCenter = (objModel.maxVertexValues + objModel.minVertexValues) / 2.0
+        
+        /* This makes the object invisible
+        var modelMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: 0.0, z: -15.0)))
+        modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, time, 0), order: .xyz))))
+        modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, 0, 35.264 * Float.pi / 180), order: .xyz))))
+        modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(Float.pi / 4, 0, 0), order: .xyz))))
+         */
+        //this has it clipping out of the vieweing plane
+        let modelMat = simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, time, 0), order: .xyz))))
 
-            
-                var modelMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: 0.0, z: -15.0)))
-                    modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, time, 0), order: .xyz))))
-                    modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, 0, 35.264 * Float.pi / 180), order: .xyz))))
-                    modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(Float.pi / 4, 0, 0), order: .xyz))))
-                // Define a distance from the object based on its size or any other suitable metric
-                let viewMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: 0.0, z: 0.0)))
+        let viewMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: objModel.maxVertexValues.y/2, z: objModel.maxVertexValues.z)))
                    
                 uniforms.mvMatrix = viewMat.inverse * modelMat
                 uniforms.pMatrix = projMat
