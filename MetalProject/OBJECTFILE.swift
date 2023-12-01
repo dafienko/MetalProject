@@ -24,6 +24,7 @@ struct OBJModel {
     
     var materials: [Material] = []
     var materialNames: [String] = []
+    var materialColors: [v3] = []
     var materialIndex = -1
 
     // Properties to store the maximum absolute values
@@ -39,7 +40,6 @@ struct OBJModel {
             let materialLibLines = materialLibData.components(separatedBy: .newlines)
 
             var currentMaterialName = "Default"  // Default material name
-                    var currentMaterialColor = v3(1.0, 0.0, 0.0)  // Default material color
 
                     for materialLibLine in materialLibLines {
                         let materialComponents = materialLibLine.components(separatedBy: " ").filter { !$0.isEmpty }
@@ -56,7 +56,7 @@ struct OBJModel {
                                 let r = Float(materialComponents[1])!
                                 let g = Float(materialComponents[2])!
                                 let b = Float(materialComponents[3])!
-                                currentMaterialColor = v3(r, g, b)
+                                materialColors.append(v3(r, g, b))
                             default:
                                 break
                             }
@@ -64,10 +64,13 @@ struct OBJModel {
                     }
 
                     // Create Material instances and append them to the materials array
-                    for (name, color) in zip(materialNames, repeatElement(currentMaterialColor, count: materialNames.count)) {
-                        let material = Material(name: name, color: color)
-                        materials.append(material)
-                    }
+            print(materialNames)
+            print(materialColors)
+            for i in 0..<materialNames.count {
+                var materialAPP = Material(name: materialNames[i],color: materialColors[i])
+                materials.append(materialAPP)
+                
+            }
             print(materials)
             for line in lines {
                 let components = line.components(separatedBy: " ").filter { !$0.isEmpty }

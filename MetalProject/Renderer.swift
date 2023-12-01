@@ -60,6 +60,10 @@ class Renderer: NSObject {
         vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
         vertexDescriptor.attributes[1].bufferIndex = 0
         
+        vertexDescriptor.attributes[2].format = .float3 // Add this line for color attribute
+        vertexDescriptor.attributes[2].offset = 2 * MemoryLayout<SIMD3<Float>>.stride
+        vertexDescriptor.attributes[2].bufferIndex = 0
+        
         vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
         
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
