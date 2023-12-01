@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		681BA0B32B1699BC0026A92E /* OBJTEST.obj in Resources */ = {isa = PBXBuildFile; fileRef = 681BA0B22B1699BC0026A92E /* OBJTEST.obj */; };
 		681BA0B52B169A0B0026A92E /* Cubed.obj in Resources */ = {isa = PBXBuildFile; fileRef = 681BA0B42B169A0B0026A92E /* Cubed.obj */; };
+		682CA28E2B1A4C0600E84B8E /* Snowman.obj in Resources */ = {isa = PBXBuildFile; fileRef = 682CA28D2B1A4C0600E84B8E /* Snowman.obj */; };
+		682CA2902B1A4C0A00E84B8E /* SnowmanMaterial.lib in Resources */ = {isa = PBXBuildFile; fileRef = 682CA28F2B1A4C0900E84B8E /* SnowmanMaterial.lib */; };
 		686661BE2B167579009BC35D /* OBJECTFILE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686661BD2B167579009BC35D /* OBJECTFILE.swift */; };
 		BB4144812B0BE91A005FE07D /* Cube.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4144802B0BE91A005FE07D /* Cube.swift */; };
 		BB6D362F2B09723300E8196C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6D362E2B09723300E8196C /* AppDelegate.swift */; };
@@ -22,8 +23,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		681BA0B22B1699BC0026A92E /* OBJTEST.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = OBJTEST.obj; sourceTree = "<group>"; };
 		681BA0B42B169A0B0026A92E /* Cubed.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Cubed.obj; sourceTree = "<group>"; };
+		682CA28D2B1A4C0600E84B8E /* Snowman.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Snowman.obj; sourceTree = "<group>"; };
+		682CA28F2B1A4C0900E84B8E /* SnowmanMaterial.lib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SnowmanMaterial.lib; sourceTree = "<group>"; };
 		686661BD2B167579009BC35D /* OBJECTFILE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OBJECTFILE.swift; sourceTree = "<group>"; };
 		BB4144802B0BE91A005FE07D /* Cube.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cube.swift; sourceTree = "<group>"; };
 		BB6D362B2B09723300E8196C /* MetalProject.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetalProject.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,8 +81,9 @@
 				BB6D36442B0980D300E8196C /* Shader.metal */,
 				BB4144802B0BE91A005FE07D /* Cube.swift */,
 				686661BD2B167579009BC35D /* OBJECTFILE.swift */,
-				681BA0B22B1699BC0026A92E /* OBJTEST.obj */,
 				681BA0B42B169A0B0026A92E /* Cubed.obj */,
+				682CA28D2B1A4C0600E84B8E /* Snowman.obj */,
+				682CA28F2B1A4C0900E84B8E /* SnowmanMaterial.lib */,
 			);
 			path = MetalProject;
 			sourceTree = "<group>";
@@ -145,9 +148,10 @@
 			files = (
 				BB6D363B2B09723400E8196C /* LaunchScreen.storyboard in Resources */,
 				BB6D36382B09723400E8196C /* Assets.xcassets in Resources */,
+				682CA28E2B1A4C0600E84B8E /* Snowman.obj in Resources */,
 				681BA0B52B169A0B0026A92E /* Cubed.obj in Resources */,
+				682CA2902B1A4C0A00E84B8E /* SnowmanMaterial.lib in Resources */,
 				BB6D36362B09723300E8196C /* Main.storyboard in Resources */,
-				681BA0B32B1699BC0026A92E /* OBJTEST.obj in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

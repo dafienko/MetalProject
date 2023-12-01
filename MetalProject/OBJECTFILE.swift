@@ -21,19 +21,54 @@ struct OBJModel {
     var vertices: [Vertex] = []
     var normals: [v3] = []
     var indices: [UInt16] = []
+    
     var materials: [Material] = []
+    var materialNames: [String] = []
+    var materialIndex = -1
 
     // Properties to store the maximum absolute values
-    var maxVertexValues: v3 = v3(0.0)
-    var minVertexValues: v3 = v3(0.0)
+    var maxVertexValues: v3 = v3(repeating: 0.0)
+    var minVertexValues: v3 = v3(repeating: 0.0)
 
-    init(contentsOfURL url: URL) {
+    init(contentsOfURL url: URL, materialPath: URL) {
         do {
             let data = try String(contentsOf: url, encoding: .utf8)
             let lines = data.components(separatedBy: .newlines)
 
-            //var currentMaterial = Material(name: "Default", color: v3(1.0, 1.0, 1.0))
+            let materialLibData = try String(contentsOf: materialPath, encoding: .utf8)
+            let materialLibLines = materialLibData.components(separatedBy: .newlines)
 
+            var currentMaterialName = "Default"  // Default material name
+                    var currentMaterialColor = v3(1.0, 0.0, 0.0)  // Default material color
+
+                    for materialLibLine in materialLibLines {
+                        let materialComponents = materialLibLine.components(separatedBy: " ").filter { !$0.isEmpty }
+                        if !materialComponents.isEmpty {
+                            switch materialComponents.first?.trimmingCharacters(in: .whitespaces) {
+                            case "newmtl":
+                                // New material definition found, update the currentMaterialName
+                                if materialComponents.count >= 2 {
+                                    currentMaterialName = materialComponents[1]
+                                    materialNames.append(currentMaterialName)
+                                }
+                            case "Kd":
+                                // Parse the RGB color from the material.lib file
+                                let r = Float(materialComponents[1])!
+                                let g = Float(materialComponents[2])!
+                                let b = Float(materialComponents[3])!
+                                currentMaterialColor = v3(r, g, b)
+                            default:
+                                break
+                            }
+                        }
+                    }
+
+                    // Create Material instances and append them to the materials array
+                    for (name, color) in zip(materialNames, repeatElement(currentMaterialColor, count: materialNames.count)) {
+                        let material = Material(name: name, color: color)
+                        materials.append(material)
+                    }
+            print(materials)
             for line in lines {
                 let components = line.components(separatedBy: " ").filter { !$0.isEmpty }
                 //if components equals nothing dont run the switch
@@ -86,9 +121,9 @@ struct OBJModel {
                             
                             let off: UInt16 = UInt16(vertices.count)
                             vertices.append(contentsOf: [
-                                Vertex(position: positions[a-1], normal: normals[d-1]),
-                                Vertex(position: positions[b-1], normal: normals[d-1]),
-                                Vertex(position: positions[c-1], normal: normals[d-1]),
+                                Vertex(position: positions[a-1], normal: normals[d-1],color: materials[materialIndex].color),
+                                Vertex(position: positions[b-1], normal: normals[d-1],color: materials[materialIndex].color),
+                                Vertex(position: positions[c-1], normal: normals[d-1],color: materials[materialIndex].color),
                             ])
                             
                             let index = [0, 1, 2].map { (i) -> UInt16 in
@@ -122,10 +157,10 @@ struct OBJModel {
                             
                             let off: UInt16 = UInt16(vertices.count)
                             vertices.append(contentsOf: [
-                                Vertex(position: positions[a-1], normal: normals[e-1]),
-                                Vertex(position: positions[b-1], normal: normals[e-1]),
-                                Vertex(position: positions[c-1], normal: normals[e-1]),
-                                Vertex(position: positions[d-1], normal: normals[e-1]),
+                                Vertex(position: positions[a-1], normal: normals[e-1],color: materials[materialIndex].color),
+                                Vertex(position: positions[b-1], normal: normals[e-1],color: materials[materialIndex].color),
+                                Vertex(position: positions[c-1], normal: normals[e-1],color: materials[materialIndex].color),
+                                Vertex(position: positions[d-1], normal: normals[e-1],color: materials[materialIndex].color),
                             ])
                             
                             let index = [0, 1, 2,0,2,3].map { (i) -> UInt16 in
@@ -137,12 +172,10 @@ struct OBJModel {
                         
                         
                     case "usemtl":
-                        let materialName = components[1]
-                        if let existingMaterial = materials.first(where: { $0.name == materialName }) {
-                        } else {
-                            // Create a new material with a default color
-                            let newMaterial = Material(name: materialName, color: v3(1.0, 0.0, 0.0))
-                            materials.append(newMaterial)
+                        if let materialName = components.last {
+                            if let index = materialNames.firstIndex(of: materialName) {
+                                materialIndex = index
+                            }
                         }
                         
                     default:
@@ -151,8 +184,7 @@ struct OBJModel {
                 }
             }
 
-            print("MaxVertices: \(maxVertexValues)")
-
+            //print(materialIndices)
         } catch {
             print("Error reading OBJ file: \(error)")
         }
@@ -165,77 +197,66 @@ class OBJECTFILE: NSObject{
         var indexBuffer: MTLBuffer?
         var objModel: OBJModel?
         
-        init(device: MTLDevice, objFilename: String) {
+    init(device: MTLDevice, objFilename: String, materialFilename: String) {
             
             
             super.init()
 
             if let url = Bundle.main.url(forResource: objFilename, withExtension: "obj") {
-                objModel = generateBufferFromOBJ(device: device, objURL: url)
+                if let matURL = Bundle.main.url(forResource: materialFilename, withExtension: "lib") {
+                    objModel = generateBufferFromOBJ(device: device, objURL: url,materialURL: matURL)
+                } else {
+                    print("Error: Unable to find the lib file with name '\(materialFilename)'.")
+                }
             } else {
                 print("Error: Unable to find the OBJ file with name '\(objFilename)'.")
             }
         }
     
-    private func generateBufferFromOBJ(device: MTLDevice, objURL: URL)-> OBJModel {
+    private func generateBufferFromOBJ(device: MTLDevice, objURL: URL, materialURL:URL)-> OBJModel {
             // Use the OBJModel structure to load OBJ file and generate buffers
-            var objModel = OBJModel(contentsOfURL: objURL)
-            
-
+            let objModel = OBJModel(contentsOfURL: objURL, materialPath: materialURL)
             
             vertexBuffer = device.makeBuffer(
                 bytes: objModel.vertices,
                 length: objModel.vertices.count * MemoryLayout<Vertex>.stride,
                 options: []
             )
-        print("Indicies count")
-        print(objModel.indices.count)
-            indexBuffer = device.makeBuffer(
-                bytes: objModel.indices,
-                length: objModel.indices.count * MemoryLayout<UInt16>.size,
-                options: []
-            )
+            print("Indicies count")
+            print(objModel.indices.count)
+                indexBuffer = device.makeBuffer(
+                    bytes: objModel.indices,
+                    length: objModel.indices.count * MemoryLayout<UInt16>.size,
+                    options: []
+                )
             
             return objModel
         }
     
     public func objRender(time: Float, encoder: MTLRenderCommandEncoder, projMat: float4x4) {
-                guard
-                    let vertexBuffer = vertexBuffer,
-                    let indexBuffer = indexBuffer,
-                    let objModel = objModel
-                else { return }
-                
-                // Calculate the bounding box center and size
-                //let boundingBoxCenter = (objModel.maxVertexValues + objModel.minVertexValues) / 2.0
-                let boundingBoxSize = objModel.maxVertexValues - objModel.minVertexValues
-            
-                let boundingBoxCenter = (objModel.maxVertexValues + objModel.minVertexValues) / 2.0
+        guard
+            let vertexBuffer = vertexBuffer,
+            let indexBuffer = indexBuffer,
+            let objModel = objModel
+        else { return }
         
-        /* This makes the object invisible
-        var modelMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: 0.0, z: -15.0)))
-        modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, time, 0), order: .xyz))))
-        modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, 0, 35.264 * Float.pi / 180), order: .xyz))))
-        modelMat *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(Float.pi / 4, 0, 0), order: .xyz))))
-         */
-        //this has it clipping out of the vieweing plane
         let modelMat = simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, time, 0), order: .xyz))))
-
+        
         let viewMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: objModel.maxVertexValues.y/2, z: objModel.maxVertexValues.z)))
-                   
-                uniforms.mvMatrix = viewMat.inverse * modelMat
-                uniforms.pMatrix = projMat
-                
-                // Set buffers and draw
-                encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-                encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 1)
-                encoder.drawIndexedPrimitives(
-                    type: .triangle,
-                    indexCount: objModel.indices.count,
-                    indexType: .uint16,
-                    indexBuffer: indexBuffer,
-                    indexBufferOffset: 0
-                )
-            }
+        
+        uniforms.mvMatrix = viewMat.inverse * modelMat
+        uniforms.pMatrix = projMat
+        
+        
+        encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 1)
+        encoder.drawIndexedPrimitives(
+            type: .triangle,
+            indexCount: objModel.indices.count,
+            indexType: .uint16,
+            indexBuffer: indexBuffer,
+            indexBufferOffset: 0
+        )
+    }
     
 }

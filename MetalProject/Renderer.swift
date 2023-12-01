@@ -12,6 +12,7 @@ import Spatial
 struct Vertex {
     var position: v3
     var normal: v3
+    var color: v3
 }
 
 typealias v3 = SIMD3<Float>
@@ -30,7 +31,7 @@ class Renderer: NSObject {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
         cube = Cube(device: device)
-        snowman = OBJECTFILE(device: device, objFilename: "OBJTEST")
+        snowman = OBJECTFILE(device: device, objFilename: "Snowman", materialFilename: "SnowmanMaterial")
         super.init()
         
         generatePipeline()

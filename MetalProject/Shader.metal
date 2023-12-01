@@ -17,6 +17,7 @@ struct Uniforms {
 struct VertexIn {
     float3 position [[ attribute(0) ]];
     float3 normal [[ attribute(1) ]];
+    float3 color [[ attribute(2) ]];
 };
 
 struct VertexOut {
@@ -29,7 +30,7 @@ vertex VertexOut vertex_shader(const VertexIn vertexIn [[ stage_in ]], constant 
     VertexOut vertexOut;
     vertexOut.position = uniforms.pMatrix * uniforms.mvMatrix * float4(vertexIn.position, 1.0);
     vertexOut.normal = float3((uniforms.mvMatrix * float4(vertexIn.normal, 0.0)).xyz);
-    vertexOut.color = uniforms.color;
+    vertexOut.color = vertexIn.color;
     
     return vertexOut;
 }

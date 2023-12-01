@@ -46,13 +46,14 @@ class Cube: NSObject {
         
         var vertices: [Vertex] = []
         var indices: [UInt16] = []
+        var colorRed = v3(1.0, 0.0, 0.0)
         func add_face(a: v3, b: v3, c: v3, d: v3, normal: v3) {
             let off: UInt16 = UInt16(vertices.count)
             vertices.append(contentsOf: [
-                Vertex(position: a, normal: normal),
-                Vertex(position: b, normal: normal),
-                Vertex(position: c, normal: normal),
-                Vertex(position: d, normal: normal),
+                Vertex(position: a, normal: normal,color:colorRed),
+                Vertex(position: b, normal: normal,color:colorRed),
+                Vertex(position: c, normal: normal,color:colorRed),
+                Vertex(position: d, normal: normal,color:colorRed),
             ])
             
             let index = [0, 1, 2, 0, 2, 3].map { (i) -> UInt16 in
