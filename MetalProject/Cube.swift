@@ -1,19 +1,5 @@
-//
-//  Cube.swift
-//  MetalProject
-//
-//  Created by Damien Afienko on 11/20/23.
-//
-
 import MetalKit
 import Spatial
-
-// struct to send to shaders
-struct Uniforms {
-    var mvMatrix: float4x4 = float4x4(1.0)
-    var pMatrix: float4x4 = float4x4(1.0)
-    var color: v3 = v3(1.0, 0.0, 0.0)
-}
 
 class Cube: NSObject {
     var uniforms = Uniforms()
@@ -49,10 +35,10 @@ class Cube: NSObject {
         func add_face(a: v3, b: v3, c: v3, d: v3, normal: v3) {
             let off: UInt16 = UInt16(vertices.count)
             vertices.append(contentsOf: [
-                Vertex(position: a, normal: normal),
-                Vertex(position: b, normal: normal),
-                Vertex(position: c, normal: normal),
-                Vertex(position: d, normal: normal),
+                Vertex(position: a, normal: normal, color: v3(1.0, 0.0, 0.0)),
+                Vertex(position: b, normal: normal, color: v3(0.0, 1.0, 0.0)),
+                Vertex(position: c, normal: normal, color: v3(0.0, 0.0, 1.0)),
+                Vertex(position: d, normal: normal, color: v3(1.0, 1.0, 1.0)),
             ])
             
             let index = [0, 1, 2, 0, 2, 3].map { (i) -> UInt16 in
@@ -82,8 +68,10 @@ class Cube: NSObject {
             options: []
         )
     }
-    
-    public func render(time: Float, encoder: MTLRenderCommandEncoder, projMat: float4x4) {
+}
+
+extension Cube: Renderable {
+    func render(time: Float, encoder: MTLRenderCommandEncoder, viewMatrix: float4x4, projectionMatrix: float4x4) {
         guard
             let vertexBuffer = vertexBuffer,
             let indexBuffer = indexBuffer
@@ -96,8 +84,8 @@ class Cube: NSObject {
         
         let viewMat = simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: 0.0, y: 0.0, z: 0.0)))
        
-        uniforms.mvMatrix = viewMat.inverse * modelMat
-        uniforms.pMatrix = projMat
+        uniforms.mvMatrix = viewMatrix * modelMat
+        uniforms.pMatrix = projectionMatrix
         
         encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 1)

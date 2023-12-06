@@ -1,10 +1,3 @@
-//
-//  ViewController.swift
-//  MetalProject
-//
-//  Created by Damien Afienko on 11/18/23.
-//
-
 import UIKit
 import MetalKit
 
@@ -20,7 +13,10 @@ class ViewController: UIViewController {
         metalView.clearColor = MTLClearColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
         metalView.depthStencilPixelFormat = .depth32Float
         
-        renderer = Renderer(device: metalView.device!)
+        renderer = Renderer(
+            device: metalView.device!,
+            viewportSize: v2(Float(metalView.drawableSize.width), Float(metalView.drawableSize.height))
+        )
         metalView.delegate = renderer
     }
 }

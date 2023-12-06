@@ -1,10 +1,3 @@
-//
-//  Renderer.swift
-//  MetalProject
-//
-//  Created by Damien Afienko on 11/18/23.
-//
-
 import MetalKit
 import Spatial
 
@@ -12,24 +5,40 @@ import Spatial
 struct Vertex {
     var position: v3
     var normal: v3
+    var color: v3
 }
 
+// struct to send to shaders
+struct Uniforms {
+    var mvMatrix: float4x4 = float4x4(1.0)
+    var pMatrix: float4x4 = float4x4(1.0)
+}
+
+typealias v2 = SIMD2<Float>
 typealias v3 = SIMD3<Float>
+
+protocol Renderable {
+    func render(time: Float, encoder: MTLRenderCommandEncoder, viewMatrix: float4x4, projectionMatrix: float4x4)
+}
 
 class Renderer: NSObject {
     var device: MTLDevice
     var commandQueue: MTLCommandQueue
     var pipelineState: MTLRenderPipelineState?
     var depthStencilState: MTLDepthStencilState?
-    let cube: Cube
+    var objects: [Renderable] = []
+    let camera: Camera = Camera(viewportSize: v2(1.0, 1.0))
     
     var time: Float = 0.0;
     
-    init(device: MTLDevice) {
+    init(device: MTLDevice, viewportSize: v2) {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
-        cube = Cube(device: device)
         super.init()
+        
+        camera.viewportSize = viewportSize
+        
+        objects.append(Cube(device: device))
         
         generatePipeline()
     }
@@ -54,8 +63,12 @@ class Renderer: NSObject {
         vertexDescriptor.attributes[0].bufferIndex = 0
         
         vertexDescriptor.attributes[1].format = .float3
-        vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
+        vertexDescriptor.attributes[1].offset = MemoryLayout<v3>.stride
         vertexDescriptor.attributes[1].bufferIndex = 0
+        
+        vertexDescriptor.attributes[2].format = .float3
+        vertexDescriptor.attributes[2].offset =  vertexDescriptor.attributes[1].offset + MemoryLayout<v3>.stride
+        vertexDescriptor.attributes[2].bufferIndex = 0
         
         vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
         
@@ -66,7 +79,9 @@ class Renderer: NSObject {
 }
 
 extension Renderer: MTKViewDelegate {
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        camera.viewportSize = v2(Float(size.width), Float(size.height))
+    }
     
     func draw(in view: MTKView) {
         time += 1.0 / Float(view.preferredFramesPerSecond)
@@ -83,14 +98,14 @@ extension Renderer: MTKViewDelegate {
         commandEncoder.setDepthStencilState(depthStencilState)
         commandEncoder.setRenderPipelineState(pipelineState)
         
-        let projMat = simd_float4x4(ProjectiveTransform3D(
-            fovyRadians: 45.0 * (Double.pi / 180.0),
-            aspectRatio: view.drawableSize.width / view.drawableSize.height,
-            nearZ: 0.1,
-            farZ: 100.0)
-        )
-        
-        cube.render(time: time, encoder: commandEncoder, projMat: projMat)
+        for object in objects {
+            object.render(
+                time: time,
+                encoder: commandEncoder,
+                viewMatrix: camera.viewMatrix,
+                projectionMatrix: camera.projectionMatrix
+            )
+        }
         
         commandEncoder.endEncoding()
         commandBuffer.present(drawable)
