@@ -38,7 +38,11 @@ class Renderer: NSObject {
         
         camera.viewportSize = viewportSize
         
-        objects.append(Cube(device: device))
+        objects.append(Model(
+            device: device,
+            objFile: Bundle.main.url(forResource: "Snowman", withExtension: "obj")!,
+            mtlFile: Bundle.main.url(forResource: "SnowmanMaterial", withExtension: "lib")!
+        ))
         
         generatePipeline()
     }

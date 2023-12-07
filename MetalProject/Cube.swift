@@ -96,6 +96,5 @@ extension Cube: Renderable {
             indexBuffer: indexBuffer,
             indexBufferOffset: 0
         )
-        
     }
 }
