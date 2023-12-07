@@ -117,7 +117,7 @@ func parseVertices(objFile: URL, materials: [String: ObjMaterial]) -> ModelGeome
         case "vn":
             normals.append(parseLineV3(components: components))
         case "f":
-            var faceIndices: [UInt16] = parseFaceIndices(components: components)
+            let faceIndices: [UInt16] = parseFaceIndices(components: components)
             if faceIndices.count == 3 { // triangle: append as-is
                 indices.append(contentsOf: faceIndices)
             } else if faceIndices.count == 4 { // quad: break into triangles before appending

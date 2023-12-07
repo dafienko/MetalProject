@@ -525,12 +525,394 @@ extension ViewController: MTKViewDelegate {
 
 
 		<h2>Rendering .obj Files</h2>
+		<p class="tutorial-step">Right now, we can only render geometry that we hard-code manually. This is obviously not ideal. Luckily, there is a simple file format for storing geometry that we can parse very easily called ".obj" files. This tutorial will not cover how .obj files work, although code to read .obj files will be provided. Before we start reading .obj files, we're going to add per-vertex color data. By now, most of this process should be pretty familiar. If you're up to it, try adding color data yourself! </p>
+
+		<p class="tutorial-step">First, let's add the color data to our shader. While we're here, we're also going to start using a more complex shading model. Our shading model will just include ambient and diffuse components; this tutorial won't cover lighting; just know that our new fragment shader will make faces darker or lighter depending on whether or not their normal faces the direction light is coming from. </p>
+
+		
+<h3 class="filename">Shader.metal</h3>
+<pre><code class="language-cpp">// ... 
+
+struct VertexIn {
+	// ...
+	
+	float3 color [[ attribute(2) ]];
+};
+
+struct VertexOut {
+	// ...
+
+	float3 color;
+};
+
+vertex VertexOut vertex_shader(const VertexIn vertexIn [[ stage_in ]], constant Uniforms &uniforms [[ buffer(1) ]]) {
+	// ...
+
+	vertexOut.color = vertexIn.color;
+	
+	// ...
+}
+
+constant float3 LIGHT_DIR = float3(1.0, -3, -1.8);
+constant float ambient = .3;
+
+fragment half4 fragment_shader(const VertexOut vertexFragment [[ stage_in ]]) {
+	float diffuse = max(ambient, dot(normalize(vertexFragment.normal), -normalize(LIGHT_DIR)));
+	half3 color = (half3)vertexFragment.color * diffuse;
+	return half4(color.xyz, 1);
+}
+</code></pre>
+
+		<p class="tutorial-step">Next, we need to update our vertex descriptor and add color to each of the vertices in our triangle. </p>
+
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>// ... 
+
+class ViewController: UIViewController {
+	// ...
+	
+	let vertices = [
+		Vertex(position: v3f(0.0, 1.0, 0.0), normal: v3f(0, 0, 1.0), color: v3f(1.0, 0.0, 0.0)),
+		Vertex(position: v3f(-1.0, -1.0, 0.0), normal: v3f(0, 0, 1.0), color: v3f(0.0, 1.0, 0.0)),
+		Vertex(position: v3f(1.0, -1.0, 0.0), normal: v3f(0, 0, 1.0), color: v3f(0.0, 0.0, 1.0)),
+	]
+
+	// ...
+
+	override func viewDidLoad() {
+        // ...
+        
+        vertexDescriptor.attributes[2].format = .float3
+        vertexDescriptor.attributes[2].offset = vertexDescriptor.attributes[1].offset + MemoryLayout<v3f>.stride
+        vertexDescriptor.attributes[2].bufferIndex = 0
+
+		// ...
+	}
+
+	// ...
+}
+
+// ...
+</code></pre>
+
+		<p class="tutorial-step">Now, if we build and run, we should be met with a colored triangle. </p>
+
+		<div class="col-img-container">
+			<img src="images/color_triangle.png" class="tutorial-image-noshadow" style="max-width: 46%; max-height: 400px"/>
+		</div>
+
+		<p class="tutorial-step">With that done, we're ready to begin loading and rendering .obj files. Because we've already covered all the tools you'll need to do this yourself, we won't be explaining much of this code in depth. We'll start by making a new 'Model.swift' file where we can write all our code to do with loading .obj files and rendering their geometry. </p>
+
+<h3 class="filename">Model.swift</h3>
+<pre><code>import MetalKit
+import Spatial
+
+struct ObjMaterial {
+	var color: v3f = v3f(0.0, 0.0, 0.0)
+}
+
+func parseMaterials(mtlFile: URL) -> [String: ObjMaterial] {
+	let data = try! String(contentsOf: mtlFile, encoding: .utf8)
+	let lines = data.components(separatedBy: .newlines)
+
+	var materials: [String: ObjMaterial] = [:]
+	
+	// ensure a default material exists
+	materials[""] = ObjMaterial(color: v3f(1.0, 1.0, 1.0))
+	
+	var currentMaterialName: String?
+	for line in lines {
+		let materialComponents = line.components(separatedBy: " ").filter { !$0.isEmpty }
+		if materialComponents.isEmpty {
+			continue
+		}
+		
+		switch materialComponents.first?.trimmingCharacters(in: .whitespaces) {
+		case "newmtl":
+			if materialComponents.count >= 2 {
+				currentMaterialName = materialComponents[1]
+				materials[currentMaterialName!] = ObjMaterial()
+			}
+		case "Kd":
+			guard let name = currentMaterialName else { break }
+			
+			materials[name]!.color = v3f(
+				Float(materialComponents[1])!,
+				Float(materialComponents[2])!,
+				Float(materialComponents[3])!
+			)
+		default:
+			break
+		}
+	}
+	
+	return materials
+}
+
+struct ModelGeometry {
+	var vertices: [Vertex] = []
+	var indices: [UInt16] = []
+	var maxBound: v3f
+	var minBound: v3f
+}
+
+func parseVertices(objFile: URL, materials: [String: ObjMaterial]) -> ModelGeometry {
+	let data = try! String(contentsOf: objFile, encoding: .utf8)
+	let lines = data.components(separatedBy: .newlines)
+	
+	var vertices: [Vertex] = []
+	var indices: [UInt16] = []
+	
+	var positions: [v3f] = []
+	var normals: [v3f] = []
+	var indexMap: [String: [SIMD2&lt;Int&gt;: UInt16]] = [:]
+	var maxBound = v3f()
+	var minBound = v3f()
+	
+	var currentMaterial: String = ""
+	indexMap[currentMaterial] = [:]
+	
+	func parseLinev3f(components: [String]) -> v3f {
+		return v3f(
+			Float(components[1])!,
+			Float(components[2])!,
+			Float(components[3])!
+		)
+	}
+	
+	func parseFaceIndices(components: [String]) -> [UInt16] {
+		var faceIndices: [UInt16] = []
+		for i in 1..&lt;components.count {
+			let indexComponents = components[i].components(separatedBy: "/")
+			let indexPair = SIMD2&lt;Int&gt;(
+				Int(indexComponents[0])! - 1,
+				Int(indexComponents.last!)! - 1
+			)
+			
+			var index = indexMap[currentMaterial]![indexPair]
+			if index == nil {
+				index = UInt16(vertices.count)
+				vertices.append(Vertex(
+					position: positions[indexPair.x],
+					normal: normals[indexPair.y],
+					color: materials[currentMaterial]!.color
+				))
+				indexMap[currentMaterial]![indexPair] = index
+			}
+			
+			faceIndices.append(index!)
+		}
+		
+		return faceIndices
+	}
+	
+	for line in lines {
+		let components = line.components(separatedBy: " ").filter { !$0.isEmpty }
+		
+		if components.isEmpty {
+			continue
+		}
+		
+		switch components[0] {
+		case "v":
+			let pos = parseLinev3f(components: components)
+			maxBound = v3f(max(maxBound.x, pos.x), max(maxBound.y, pos.y), max(maxBound.z, pos.z))
+			minBound = v3f(min(minBound.x, pos.x), min(minBound.y, pos.y), min(minBound.z, pos.z))
+			
+			positions.append(pos)
+		case "vn":
+			normals.append(parseLinev3f(components: components))
+		case "f":
+			let faceIndices: [UInt16] = parseFaceIndices(components: components)
+			if faceIndices.count == 3 { // triangle: append as-is
+				indices.append(contentsOf: faceIndices)
+			} else if faceIndices.count == 4 { // quad: break into triangles before appending
+				indices.append(contentsOf: [
+					faceIndices[0], faceIndices[1], faceIndices[2],
+					faceIndices[0], faceIndices[2], faceIndices[3]
+				])
+			}
+		case "usemtl":
+			currentMaterial = components.last!
+			indexMap[currentMaterial] = [:]
+		default:
+			break
+		}
+	}
+	
+	return ModelGeometry(vertices: vertices, indices: indices, maxBound: maxBound, minBound: minBound)
+}
+
+class Model : NSObject {
+	var vertexBuffer: MTLBuffer?
+	var indexBuffer: MTLBuffer?
+	var transform: float4x4 = float4x4(1.0)
+	var indexCount: Int = 0
+	
+	init(device: MTLDevice, objFile: URL, mtlFile: URL) {
+		super.init()
+		
+		let geometry = parseVertices(
+			objFile: objFile,
+			materials: parseMaterials(mtlFile: mtlFile)
+		)
+		indexCount = geometry.indices.count
+		
+		let scale = 20.0 / length(geometry.maxBound - geometry.minBound)
+		let center = ((geometry.maxBound + geometry.minBound) / 2.0) * scale
+		transform *= simd_float4x4(AffineTransform3D.init(translation: Vector3D(x: -center.x, y: -center.y, z: -25.0 - center.z)))
+		transform *= simd_float4x4(AffineTransform3D.init(scale: Size3D(width: scale, height: scale, depth: scale)))
+		
+		vertexBuffer = device.makeBuffer(
+			bytes: geometry.vertices,
+			length: geometry.vertices.count * MemoryLayout&lt;Vertex&gt;.stride,
+			options: []
+		)
+		
+		indexBuffer = device.makeBuffer(
+			bytes: geometry.indices,
+			length: geometry.indices.count * MemoryLayout&lt;UInt16&gt;.size,
+			options: []
+		)
+	}
+	
+	func render(encoder: MTLRenderCommandEncoder, viewMatrix: float4x4, projectionMatrix: float4x4) {
+		guard
+			let vertexBuffer = vertexBuffer,
+			let indexBuffer = indexBuffer
+		else { return }
+	
+		transform *= simd_float4x4(AffineTransform3D.init(rotation: Rotation3D(eulerAngles: EulerAngles(angles: simd_float3(0, 0.01, 0), order: .xyz))))
+		var uniforms = Uniforms(modelMatrix: viewMatrix * transform, projMatrix: projectionMatrix)
+		
+		encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+		encoder.setVertexBytes(&uniforms, length: MemoryLayout&lt;Uniforms&gt;.size, index: 1)
+		encoder.drawIndexedPrimitives(
+			type: .triangle,
+			indexCount: indexCount,
+			indexType: .uint16,
+			indexBuffer: indexBuffer,
+			indexBufferOffset: 0
+		)
+	}
+}</code></pre>
+
+		<p class="tutorial-step">Next, let's refactor our "ViewController.swift" file. We don't need our hard-coded triangle anymore, so we can get rid of that, but we also need to replace it with our new Model class. </p>
 
 
+<h3 class="filename">ViewController.swift</h3>
+<pre><code>import UIKit
+import MetalKit
+import Spatial
 
+typealias v3f = SIMD3&lt;Float&gt;
 
+struct Uniforms {
+	var modelMatrix: float4x4 = float4x4(1.0)
+	var projMatrix: float4x4 = float4x4(1.0)
+}
 
+struct Vertex {
+	var position: v3f
+	var normal: v3f
+	var color: v3f
+}
 
+class ViewController: UIViewController {
+	@IBOutlet weak var metalView: MTKView!
+
+	var commandQueue: MTLCommandQueue!
+	var pipelineState: MTLRenderPipelineState?
+	var depthStencilState: MTLDepthStencilState?
+	var model: Model?
+	
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		
+		let device = MTLCreateSystemDefaultDevice()!
+		metalView.device = device
+		metalView.clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0)
+		metalView.delegate = self
+		
+		commandQueue = metalView.device?.makeCommandQueue();
+		
+		let vertexDescriptor = MTLVertexDescriptor()
+		vertexDescriptor.attributes[0].format = .float3
+		vertexDescriptor.attributes[0].offset = 0
+		vertexDescriptor.attributes[0].bufferIndex = 0
+		
+		vertexDescriptor.attributes[1].format = .float3
+		vertexDescriptor.attributes[1].offset = MemoryLayout&lt;v3f&gt;.stride
+		vertexDescriptor.attributes[1].bufferIndex = 0
+		
+		vertexDescriptor.attributes[2].format = .float3
+		vertexDescriptor.attributes[2].offset = vertexDescriptor.attributes[1].offset + MemoryLayout&lt;v3f&gt;.stride
+		vertexDescriptor.attributes[2].bufferIndex = 0
+		
+		vertexDescriptor.layouts[0].stride = MemoryLayout&lt;Vertex&gt;.stride
+		
+		let library = device.makeDefaultLibrary()
+		
+		let pipelineDescriptor = MTLRenderPipelineDescriptor()
+		pipelineDescriptor.vertexFunction = library?.makeFunction(name: "vertex_shader")
+		pipelineDescriptor.fragmentFunction = library?.makeFunction(name: "fragment_shader")
+		pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+		pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+		pipelineDescriptor.vertexDescriptor = vertexDescriptor
+		
+		pipelineState = try! device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+		
+		let depthStencilDescriptor = MTLDepthStencilDescriptor()
+		depthStencilDescriptor.depthCompareFunction = .less
+		depthStencilDescriptor.isDepthWriteEnabled = true
+		depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+		
+		model = Model(
+			device: device,
+			objFile: Bundle.main.url(forResource: "Snowman", withExtension: "obj")!,
+			mtlFile: Bundle.main.url(forResource: "SnowmanMaterial", withExtension: "lib")!
+		)
+	}
+}
+
+extension ViewController: MTKViewDelegate {
+	func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
+	
+	func draw(in view: MTKView) {
+		let buffer = commandQueue.makeCommandBuffer()!
+		let encoder = buffer.makeRenderCommandEncoder(descriptor: metalView.currentRenderPassDescriptor!)!
+		
+		let projMat = float4x4(ProjectiveTransform3D(
+			fovyRadians: 45.0 * (Double.pi / 180.0),
+			aspectRatio: view.drawableSize.width / view.drawableSize.height,
+			nearZ: 0.1,
+			farZ: 100.0)
+		)
+		
+		encoder.setDepthStencilState(depthStencilState!)
+		encoder.setRenderPipelineState(pipelineState!)
+		
+		if model != nil {
+			model!.render(encoder: encoder, viewMatrix: float4x4(1.0), projectionMatrix: projMat)
+		}
+		
+		encoder.endEncoding()
+		buffer.present(view.currentDrawable!)
+		buffer.commit()
+	}
+}</code></pre>
+
+		<p class="tutorial-step">All we need to do now is add our .obj file to our project. Simply download the <a href="https://github.com/dafienko/MetalTutorial/blob/main/tutorial/Snowman.obj">Snowman.obj</a> and <a href="https://github.com/dafienko/MetalTutorial/blob/main/tutorial/SnowmanMaterial.lib">SnowmanMaterial.lib</a> files and drag them directly into the project explorer panel on the left. </p>
+
+		<p class="tutorial-step">With that done, if we build and run, a snowman should appear spinning on the screen. </p>
+
+		<div class="col-img-container">
+			<img src="images/snowman.png" class="tutorial-image-noshadow" style="max-width: 46%; max-height: 400px"/>
+		</div>
+
+		<p class="tutorial-step">This concludes our Metal tutorial! The full tutorial code at each step can be viewed on <a href="https://github.com/dafienko/MetalTutorial/tree/main">GitHub</a>. If you made it this far successfully, congratulations, and thank you for following along. Hopefully this tutorial was helpful in getting you started with Metal!</p>
+
+		<p class="tutorial-step">Note: this tutorial is by no means exemplary for a real-world application. The purpose of this tutorial is to provide an introduction to Metal as directly and simply as possible; in an actual application, abstractions should be made and code should be organized more carefully.</p>
 
 		<h2>See Also</h2>
 		<p>
@@ -540,6 +922,7 @@ extension ViewController: MTKViewDelegate {
 	</div>
 	</div>
 	</div>
+
 
 	<script src="prism.js"></script>
 	<script src="modal.js"></script>
