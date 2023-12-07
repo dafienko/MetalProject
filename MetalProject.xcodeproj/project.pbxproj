@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BB0BC8732B22443C0052DD7F /* tree.obj in Resources */ = {isa = PBXBuildFile; fileRef = BB0BC8722B22443C0052DD7F /* tree.obj */; };
+		BB0BC8752B2244400052DD7F /* tree.mtl in Resources */ = {isa = PBXBuildFile; fileRef = BB0BC8742B2244400052DD7F /* tree.mtl */; };
 		BB4144812B0BE91A005FE07D /* Cube.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4144802B0BE91A005FE07D /* Cube.swift */; };
 		BB5B87FF2B2132800030034C /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5B87FE2B2132800030034C /* Model.swift */; };
 		BB5B88012B2132D20030034C /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5B88002B2132D20030034C /* Camera.swift */; };
@@ -25,6 +27,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		BB0BC8722B22443C0052DD7F /* tree.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tree.obj; sourceTree = "<group>"; };
+		BB0BC8742B2244400052DD7F /* tree.mtl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tree.mtl; sourceTree = "<group>"; };
 		BB4144802B0BE91A005FE07D /* Cube.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cube.swift; sourceTree = "<group>"; };
 		BB5B87FE2B2132800030034C /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
 		BB5B88002B2132D20030034C /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
@@ -89,6 +93,8 @@
 				BB6D36442B0980D300E8196C /* Shader.metal */,
 				BB4144802B0BE91A005FE07D /* Cube.swift */,
 				BB5B88002B2132D20030034C /* Camera.swift */,
+				BB0BC8742B2244400052DD7F /* tree.mtl */,
+				BB0BC8722B22443C0052DD7F /* tree.obj */,
 				BB5B88082B214ECA0030034C /* Cube2.obj */,
 			);
 			path = MetalProject;
@@ -152,7 +158,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB0BC8752B2244400052DD7F /* tree.mtl in Resources */,
 				BB6D363B2B09723400E8196C /* LaunchScreen.storyboard in Resources */,
+				BB0BC8732B22443C0052DD7F /* tree.obj in Resources */,
 				BB5B88072B214B250030034C /* Cube.obj in Resources */,
 				BB5B88092B214ECA0030034C /* Cube2.obj in Resources */,
 				BB6D36382B09723400E8196C /* Assets.xcassets in Resources */,

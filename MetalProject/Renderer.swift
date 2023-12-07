@@ -40,9 +40,15 @@ class Renderer: NSObject {
         
         objects.append(Model(
             device: device,
-            objFile: Bundle.main.url(forResource: "Snowman", withExtension: "obj")!,
-            mtlFile: Bundle.main.url(forResource: "SnowmanMaterial", withExtension: "lib")!
+            objFile: Bundle.main.url(forResource: "tree", withExtension: "obj")!,
+            mtlFile: Bundle.main.url(forResource: "tree", withExtension: "mtl")!
         ))
+        
+//        objects.append(Model(
+//            device: device,
+//            objFile: Bundle.main.url(forResource: "Snowman", withExtension: "obj")!,
+//            mtlFile: Bundle.main.url(forResource: "SnowmanMaterial", withExtension: "lib")!
+//        ))
         
         generatePipeline()
     }
