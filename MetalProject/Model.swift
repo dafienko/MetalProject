@@ -10,29 +10,33 @@ func parseMaterials(mtlFile: URL) -> [String: ObjMaterial] {
     let lines = data.components(separatedBy: .newlines)
 
     var materials: [String: ObjMaterial] = [:]
+    
+    // ensure a default material exists
     materials[""] = ObjMaterial(color: v3(1.0, 1.0, 1.0))
     
     var currentMaterialName: String?
     for line in lines {
         let materialComponents = line.components(separatedBy: " ").filter { !$0.isEmpty }
-        if !materialComponents.isEmpty {
-            switch materialComponents.first?.trimmingCharacters(in: .whitespaces) {
-            case "newmtl":
-                if materialComponents.count >= 2 {
-                    currentMaterialName = materialComponents[1]
-                    materials[currentMaterialName!] = ObjMaterial()
-                }
-            case "Kd":
-                guard let name = currentMaterialName else { break }
-                
-                materials[name]!.color = v3(
-                    Float(materialComponents[1])!,
-                    Float(materialComponents[2])!,
-                    Float(materialComponents[3])!
-                )
-            default:
-                break
+        if materialComponents.isEmpty {
+            continue
+        }
+        
+        switch materialComponents.first?.trimmingCharacters(in: .whitespaces) {
+        case "newmtl":
+            if materialComponents.count >= 2 {
+                currentMaterialName = materialComponents[1]
+                materials[currentMaterialName!] = ObjMaterial()
             }
+        case "Kd":
+            guard let name = currentMaterialName else { break }
+            
+            materials[name]!.color = v3(
+                Float(materialComponents[1])!,
+                Float(materialComponents[2])!,
+                Float(materialComponents[3])!
+            )
+        default:
+            break
         }
     }
     
@@ -114,7 +118,6 @@ func parseVertices(objFile: URL, materials: [String: ObjMaterial]) -> ModelGeome
             normals.append(parseLineV3(components: components))
         case "f":
             var faceIndices: [UInt16] = parseFaceIndices(components: components)
-            
             if faceIndices.count == 3 { // triangle: append as-is
                 indices.append(contentsOf: faceIndices)
             } else if faceIndices.count == 4 { // quad: break into triangles before appending
